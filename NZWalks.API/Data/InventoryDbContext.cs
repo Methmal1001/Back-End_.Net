@@ -1,8 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NZWalks.API.Models.Domain.Inventory;
-using System.Data;
-using System.Security;
-using System.Security.Cryptography.X509Certificates;
 
 namespace NZWalks.API.Data
 {
@@ -50,6 +47,9 @@ namespace NZWalks.API.Data
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
+        // ✅ Deleted products archive
+        public DbSet<DeletedProduct> DeletedProducts { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ---- Composite PK ----
@@ -63,7 +63,7 @@ namespace NZWalks.API.Data
                 .HasForeignKey(c => c.ParentCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ---- StockTransfer (two FKs to Warehouse) ----
+            // ---- StockTransfer ----
             modelBuilder.Entity<StockTransfer>()
                 .HasOne(t => t.FromWarehouse)
                 .WithMany()
@@ -365,6 +365,12 @@ namespace NZWalks.API.Data
                 .Property(s => s.DiscountPercent).HasColumnType("decimal(5,2)");
             modelBuilder.Entity<SalesOrderItem>()
                 .Property(s => s.LineTotal).HasColumnType("decimal(18,2)");
+
+            // ---- DeletedProduct decimal precision ----
+            modelBuilder.Entity<DeletedProduct>()
+                .Property(d => d.UnitCost).HasColumnType("decimal(18,4)");
+            modelBuilder.Entity<DeletedProduct>()
+                .Property(d => d.UnitPrice).HasColumnType("decimal(18,4)");
         }
     }
 }
