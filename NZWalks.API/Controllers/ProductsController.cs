@@ -85,7 +85,7 @@ namespace NZWalks.API.Controllers
         // POST  api/inventory/products
         // ══════════════════════════════════════════════════════════════════════
         [HttpPost]
-        [ProducesResponseType(typeof(ProductResponseDto), 201)]
+        [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(409)]
         public async Task<IActionResult> Create([FromBody] CreateProductRequestDto dto)
@@ -93,10 +93,13 @@ namespace NZWalks.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Duplicate SKU check
             var existing = await _productRepo.GetBySkuAsync(dto.Sku);
+
             if (existing != null)
-                return Conflict(new { message = $"A product with SKU '{dto.Sku}' already exists." });
+                return Conflict(new
+                {
+                    message = $"A product with SKU '{dto.Sku}' already exists."
+                });
 
             var product = new Product
             {
@@ -119,10 +122,7 @@ namespace NZWalks.API.Controllers
 
             var created = await _productRepo.CreateAsync(product);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = created.Id },
-                MapToResponseDto(created));
+            return Ok(MapToResponseDto(created));
         }
 
         // ══════════════════════════════════════════════════════════════════════
