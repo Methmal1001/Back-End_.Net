@@ -5,7 +5,7 @@ using NZWalks.API.Repositories;
 
 namespace NZWalks.API.Controllers
 {
-    [Route("api/inventory/[controller]")]
+    [Route("api/inventory")]
     [ApiController]
     public class ProductsController : ControllerBase
     {
@@ -20,7 +20,7 @@ namespace NZWalks.API.Controllers
         // GET  api/inventory/products
         // Query params: search, categoryId, isActive, sortBy, isDescending, page, pageSize
         // ══════════════════════════════════════════════════════════════════════
-        [HttpGet]
+        [HttpGet("GetAllProducts")]
         [ProducesResponseType(typeof(ProductListResponseDto), 200)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
@@ -52,7 +52,7 @@ namespace NZWalks.API.Controllers
         // ══════════════════════════════════════════════════════════════════════
         // GET  api/inventory/products/{id}
         // ══════════════════════════════════════════════════════════════════════
-        [HttpGet("{id:guid}")]
+        [HttpGet("GetProductById/{id:guid}")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
