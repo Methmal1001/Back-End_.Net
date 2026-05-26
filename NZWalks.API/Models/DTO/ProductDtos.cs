@@ -56,6 +56,8 @@ namespace NZWalks.API.Models.DTO.Product
 
     public class UpdateProductRequestDto
     {
+        public Guid Id { get; set; }
+
         [Required]
         [MaxLength(50)]
         public string Sku { get; set; } = string.Empty;
@@ -106,6 +108,8 @@ namespace NZWalks.API.Models.DTO.Product
 
     public class DeleteProductRequestDto
     {
+        public Guid Id { get; set; }
+
         [MaxLength(500)]
         public string? DeletionReason { get; set; }
 

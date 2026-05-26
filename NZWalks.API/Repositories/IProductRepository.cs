@@ -27,5 +27,6 @@ namespace NZWalks.API.Repositories
         Task<List<DeletedProduct>> GetDeletedProductsAsync();
 
         Task<DeletedProduct?> GetDeletedProductByIdAsync(Guid deletedRecordId);
+        Task GetAllAsync();
     }
 }
