@@ -1,0 +1,75 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace NZWalks.API.Models.DTO.HR
+{
+    public class RegisterRequestDto
+    {
+        [Required] public string Name { get; set; } = string.Empty;
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required, MinLength(8)] public string Password { get; set; } = string.Empty;
+        [Required] public Guid RoleId { get; set; }
+    }
+
+    public class LoginRequestDto
+    {
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required] public string Password { get; set; } = string.Empty;
+    }
+
+    public class LoginResponseDto
+    {
+        public string AccessToken { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+        public UserProfileDto User { get; set; } = null!;
+    }
+
+    public class RefreshTokenRequestDto
+    {
+        [Required] public string RefreshToken { get; set; } = string.Empty;
+    }
+
+    public class UserProfileDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public List<string> Permissions { get; set; } = new();
+    }
+
+    public class CreateRoleRequestDto
+    {
+        [Required, MaxLength(100)] public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+
+    public class RoleResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public List<string> Permissions { get; set; } = new();
+    }
+
+    public class AssignPermissionsRequestDto
+    {
+        [Required] public Guid RoleId { get; set; }
+        [Required] public List<Guid> PermissionIds { get; set; } = new();
+    }
+
+    public class PermissionResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Module { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+
+    public class CreatePermissionRequestDto
+    {
+        [Required, MaxLength(100)] public string Module { get; set; } = string.Empty;
+        [Required, MaxLength(100)] public string Action { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+}
