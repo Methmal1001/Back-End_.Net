@@ -29,6 +29,12 @@ namespace NZWalks.API.Models.DTO.HR
         [Required] public string RefreshToken { get; set; } = string.Empty;
     }
 
+    public class ChangePasswordRequestDto
+    {
+        [Required] public string CurrentPassword { get; set; } = string.Empty;
+        [Required, MinLength(8)] public string NewPassword { get; set; } = string.Empty;
+    }
+
     public class UserProfileDto
     {
         public Guid Id { get; set; }

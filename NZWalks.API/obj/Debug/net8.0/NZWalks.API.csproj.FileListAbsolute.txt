@@ -138,4 +138,3 @@ E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\bin\Debug\net8.0\runtimes\w
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Windows.Extensions.dll
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\NZWalks.API.sourcelink.json
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
-E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

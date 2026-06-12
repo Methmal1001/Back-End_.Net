@@ -112,14 +112,6 @@ namespace NZWalks.API.Models.DTO.Product
 
         [MaxLength(500)]
         public string? DeletionReason { get; set; }
-
-        // In a real app this would come from the auth token.
-        // For testing via Swagger we accept it in the body.
-        [Required]
-        public string DeletedByUserId { get; set; } = string.Empty;
-
-        [Required]
-        public string DeletedByUserName { get; set; } = string.Empty;
     }
 
     // ──────────────────────────────────────────────
@@ -147,6 +139,22 @@ namespace NZWalks.API.Models.DTO.Product
         public string? Barcode { get; set; }
         public string? ImageUrl { get; set; }
         public DateTime CreatedAt { get; set; }
+        public Guid? CreatedByUserId { get; set; }
+        public string? CreatedByUserName { get; set; }
+        public Guid? UpdatedByUserId { get; set; }
+        public string? UpdatedByUserName { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class ProductAuditLogDto
+    {
+        public Guid Id { get; set; }
+        public Guid ProductId { get; set; }
+        public string Action { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string? Details { get; set; }
     }
 
     public class DeletedProductResponseDto

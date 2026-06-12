@@ -6,6 +6,8 @@ using NZWalks.API.Models.Domain.Inventory;
 
 namespace NZWalks.API.Repositories.HR
 {
+    public enum RoleDeleteResult { NotFound, InUse, Deleted }
+
     public interface IAuthRepository
     {
         Task<AppUser?> GetUserByEmailAsync(string email);
@@ -14,6 +16,7 @@ namespace NZWalks.API.Repositories.HR
         Task<AppUser?> GetUserByIdAsync(Guid id);
         Task<AppUser?> UpdateUserAsync(Guid id, AppUser user);
         Task<bool> DeleteUserAsync(Guid id);
+        Task<bool> UpdatePasswordAsync(Guid id, string newPasswordHash);
         Task<List<string>> GetUserPermissionsAsync(Guid userId);
         Task SaveRefreshTokenAsync(Guid appUserId, string token, DateTime expiresAt);
         Task<HrRefreshToken?> GetRefreshTokenAsync(string token);
@@ -21,6 +24,8 @@ namespace NZWalks.API.Repositories.HR
         Task<List<Role>> GetAllRolesAsync();
         Task<Role?> GetRoleByIdAsync(Guid id);
         Task<Role> CreateRoleAsync(Role role);
+        Task<Role?> UpdateRoleAsync(Guid id, string name, string? description);
+        Task<RoleDeleteResult> DeleteRoleAsync(Guid id);
         Task AssignPermissionsToRoleAsync(Guid roleId, List<Guid> permissionIds);
         Task<List<Permission>> GetAllPermissionsAsync();
         Task<Permission> CreatePermissionAsync(Permission permission);
@@ -83,6 +88,16 @@ namespace NZWalks.API.Repositories.HR
             return true;
         }
 
+        public async Task<bool> UpdatePasswordAsync(Guid id, string newPasswordHash)
+        {
+            var user = await _inv.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return false;
+
+            user.PasswordHash = newPasswordHash;
+            await _inv.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<List<string>> GetUserPermissionsAsync(Guid userId)
         {
             var user = await _hr.Users
@@ -134,6 +149,34 @@ namespace NZWalks.API.Repositories.HR
             _inv.Roles.Add(role);
             await _inv.SaveChangesAsync();
             return role;
+        }
+
+        public async Task<Role?> UpdateRoleAsync(Guid id, string name, string? description)
+        {
+            var role = await _inv.Roles.FirstOrDefaultAsync(r => r.Id == id);
+            if (role == null) return null;
+
+            role.Name = name.Trim();
+            role.Description = description;
+            await _inv.SaveChangesAsync();
+
+            return await GetRoleByIdAsync(id);
+        }
+
+        public async Task<RoleDeleteResult> DeleteRoleAsync(Guid id)
+        {
+            var role = await _inv.Roles.FirstOrDefaultAsync(r => r.Id == id);
+            if (role == null) return RoleDeleteResult.NotFound;
+
+            var hasUsers = await _inv.Users.AnyAsync(u => u.RoleId == id);
+            if (hasUsers) return RoleDeleteResult.InUse;
+
+            var rolePermissions = _inv.RolePermissions.Where(rp => rp.RoleId == id);
+            _inv.RolePermissions.RemoveRange(rolePermissions);
+            _inv.Roles.Remove(role);
+            await _inv.SaveChangesAsync();
+
+            return RoleDeleteResult.Deleted;
         }
 
         public async Task AssignPermissionsToRoleAsync(Guid roleId, List<Guid> permissionIds)

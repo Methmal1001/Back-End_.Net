@@ -6,6 +6,8 @@ using NZWalks.API.Models.Domain.Inventory;
 using NZWalks.API.Models.DTO.HR;
 using NZWalks.API.Repositories.HR;
 using NZWalks.API.Services;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace NZWalks.API.Controllers.HR
 {
@@ -24,61 +26,58 @@ namespace NZWalks.API.Controllers.HR
             _config = config;
         }
 
-        // ── POST api/hr/auth/Register ─────────────────────────────────────────
-        // No [Authorize] here — open so the first admin user can be created.
-        // After your first user is created, you can add [Authorize] + [RequirePermission("Auth","Register")] back.
-        [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
+        // ── POST api/hr/auth/ChangePassword ───────────────────────────────────
+        [HttpPost("ChangePassword")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto dto)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new CommonApiResponse<object>
-                    {
-                        StatusCode = 400,
-                        IsSuccess = false,
-                        Message = "Validation failed",
-                        Data = ModelState
-                    });
-
-                var existing = await _authRepo.GetUserByEmailAsync(dto.Email);
-                if (existing != null)
-                    return Conflict(new CommonApiResponse<object>
-                    {
-                        StatusCode = 409,
-                        IsSuccess = false,
-                        Message = "Email already registered.",
-                        Data = null
-                    });
-
-                var user = new AppUser
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object>
                 {
-                    Name = dto.Name.Trim(),
-                    Email = dto.Email.Trim(),
-                    RoleId = dto.RoleId,
-                    IsActive = true
-                };
-
-                var created = await _authRepo.RegisterAsync(user, dto.Password);
-
-                return Ok(new CommonApiResponse<object>
-                {
-                    StatusCode = 200,
-                    IsSuccess = true,
-                    Message = "User registered successfully.",
-                    Data = new { created.Id, created.Name, created.Email, created.RoleId }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new CommonApiResponse<object>
-                {
-                    StatusCode = 500,
+                    StatusCode = 400,
                     IsSuccess = false,
-                    Message = ex.Message,
+                    Message = "Validation failed",
+                    Data = ModelState
+                });
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new CommonApiResponse<object>
+                {
+                    StatusCode = 401,
+                    IsSuccess = false,
+                    Message = "Invalid token.",
                     Data = null
                 });
-            }
+
+            var user = await _authRepo.GetUserByIdAsync(userId);
+            if (user == null)
+                return NotFound(new CommonApiResponse<object>
+                {
+                    StatusCode = 404,
+                    IsSuccess = false,
+                    Message = "User not found.",
+                    Data = null
+                });
+
+            if (!PasswordHelper.Verify(dto.CurrentPassword, user.PasswordHash))
+                return BadRequest(new CommonApiResponse<object>
+                {
+                    StatusCode = 400,
+                    IsSuccess = false,
+                    Message = "Current password is incorrect.",
+                    Data = null
+                });
+
+            await _authRepo.UpdatePasswordAsync(userId, PasswordHelper.Hash(dto.NewPassword));
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Password changed successfully.",
+                Data = null
+            });
         }
 
         // ── POST api/hr/auth/Login ─────────────────────────────────────────────
@@ -274,6 +273,82 @@ namespace NZWalks.API.Controllers.HR
                 Data = null
             });
         }
+
+        // ── PUT api/hr/roles/UpdateRole?id={id} ───────────────────────────────
+        [HttpPut("UpdateRole")]
+        [RequireAdminOrPermission("Roles", "Update")]
+        public async Task<IActionResult> UpdateRole([FromQuery] Guid id, [FromBody] CreateRoleRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object>
+                {
+                    StatusCode = 400,
+                    IsSuccess = false,
+                    Message = "Validation failed",
+                    Data = ModelState
+                });
+
+            var updated = await _authRepo.UpdateRoleAsync(id, dto.Name, dto.Description);
+            if (updated == null)
+                return NotFound(new CommonApiResponse<object>
+                {
+                    StatusCode = 404,
+                    IsSuccess = false,
+                    Message = "Role not found.",
+                    Data = null
+                });
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Role updated.",
+                Data = new RoleResponseDto
+                {
+                    Id = updated.Id,
+                    Name = updated.Name,
+                    Description = updated.Description,
+                    Permissions = updated.RolePermissions
+                        .Select(rp => $"{rp.Permission.Module}.{rp.Permission.Action}")
+                        .ToList()
+                }
+            });
+        }
+
+        // ── DELETE api/hr/roles/DeleteRole?id={id} ────────────────────────────
+        // Fails gracefully (isSuccess=false, 409) if any users are still assigned
+        // to this role — reassign or deactivate those users first.
+        [HttpDelete("DeleteRole")]
+        [RequireAdminOrPermission("Roles", "Delete")]
+        public async Task<IActionResult> DeleteRole([FromQuery] Guid id)
+        {
+            var result = await _authRepo.DeleteRoleAsync(id);
+
+            return result switch
+            {
+                RoleDeleteResult.NotFound => NotFound(new CommonApiResponse<object>
+                {
+                    StatusCode = 404,
+                    IsSuccess = false,
+                    Message = "Role not found.",
+                    Data = null
+                }),
+                RoleDeleteResult.InUse => Conflict(new CommonApiResponse<object>
+                {
+                    StatusCode = 409,
+                    IsSuccess = false,
+                    Message = "Cannot delete this role because one or more users are still assigned to it. Reassign those users to a different role first.",
+                    Data = null
+                }),
+                _ => Ok(new CommonApiResponse<object>
+                {
+                    StatusCode = 200,
+                    IsSuccess = true,
+                    Message = "Role deleted.",
+                    Data = null
+                })
+            };
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -390,7 +465,7 @@ namespace NZWalks.API.Controllers.HR
 
         // ── POST api/hr/users/CreateUser ──────────────────────────────────────
         [HttpPost("CreateUser")]
-        [RequirePermission("Users", "Create")]
+        [RequireAdminOrPermission("Users", "Create")]
         public async Task<IActionResult> CreateUser([FromBody] RegisterRequestDto dto)
         {
             if (!ModelState.IsValid)
@@ -416,7 +491,7 @@ namespace NZWalks.API.Controllers.HR
 
         // ── PUT api/hr/users/UpdateUser?id={id} ───────────────────────────────
         [HttpPut("UpdateUser")]
-        [RequirePermission("Users", "Update")]
+        [RequireAdminOrPermission("Users", "Update")]
         public async Task<IActionResult> UpdateUser([FromQuery] Guid id, [FromBody] UpdateUserRequestDto dto)
         {
             if (!ModelState.IsValid)
@@ -438,7 +513,7 @@ namespace NZWalks.API.Controllers.HR
 
         // ── DELETE api/hr/users/DeleteUser?id={id} (soft delete — deactivates) ─
         [HttpDelete("DeleteUser")]
-        [RequirePermission("Users", "Delete")]
+        [RequireAdminOrPermission("Users", "Delete")]
         public async Task<IActionResult> DeleteUser([FromQuery] Guid id)
         {
             var deleted = await _authRepo.DeleteUserAsync(id);

@@ -50,6 +50,9 @@ namespace NZWalks.API.Data
         // ✅ Deleted products archive
         public DbSet<DeletedProduct> DeletedProducts { get; set; }
 
+        // ✅ Product audit trail
+        public DbSet<ProductAuditLog> ProductAuditLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ---- Composite PK ----
