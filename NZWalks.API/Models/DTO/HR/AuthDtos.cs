@@ -38,6 +38,26 @@ namespace NZWalks.API.Models.DTO.HR
         public List<string> Permissions { get; set; } = new();
     }
 
+    public class UpdateUserRequestDto
+    {
+        [Required] public string Name { get; set; } = string.Empty;
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required] public Guid RoleId { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class UserResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public Guid RoleId { get; set; }
+        public string RoleName { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
     public class CreateRoleRequestDto
     {
         [Required, MaxLength(100)] public string Name { get; set; } = string.Empty;

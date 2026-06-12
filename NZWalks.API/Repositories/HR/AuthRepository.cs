@@ -10,6 +10,10 @@ namespace NZWalks.API.Repositories.HR
     {
         Task<AppUser?> GetUserByEmailAsync(string email);
         Task<AppUser> RegisterAsync(AppUser user, string rawPassword);
+        Task<List<AppUser>> GetAllUsersAsync();
+        Task<AppUser?> GetUserByIdAsync(Guid id);
+        Task<AppUser?> UpdateUserAsync(Guid id, AppUser user);
+        Task<bool> DeleteUserAsync(Guid id);
         Task<List<string>> GetUserPermissionsAsync(Guid userId);
         Task SaveRefreshTokenAsync(Guid appUserId, string token, DateTime expiresAt);
         Task<HrRefreshToken?> GetRefreshTokenAsync(string token);
@@ -47,6 +51,36 @@ namespace NZWalks.API.Repositories.HR
             _inv.Users.Add(user);
             await _inv.SaveChangesAsync();
             return user;
+        }
+
+        public async Task<List<AppUser>> GetAllUsersAsync()
+            => await _hr.Users.Include(u => u.Role).ToListAsync();
+
+        public async Task<AppUser?> GetUserByIdAsync(Guid id)
+            => await _hr.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+
+        public async Task<AppUser?> UpdateUserAsync(Guid id, AppUser updated)
+        {
+            var user = await _inv.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return null;
+
+            user.Name = updated.Name.Trim();
+            user.Email = updated.Email.ToLower().Trim();
+            user.RoleId = updated.RoleId;
+            user.IsActive = updated.IsActive;
+
+            await _inv.SaveChangesAsync();
+            return await GetUserByIdAsync(id);
+        }
+
+        public async Task<bool> DeleteUserAsync(Guid id)
+        {
+            var user = await _inv.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return false;
+
+            user.IsActive = false;
+            await _inv.SaveChangesAsync();
+            return true;
         }
 
         public async Task<List<string>> GetUserPermissionsAsync(Guid userId)

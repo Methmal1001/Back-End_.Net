@@ -24,10 +24,10 @@ namespace NZWalks.API.Controllers.HR
             _config = config;
         }
 
-        // ── POST api/hr/auth/register ─────────────────────────────────────────
+        // ── POST api/hr/auth/Register ─────────────────────────────────────────
         // No [Authorize] here — open so the first admin user can be created.
         // After your first user is created, you can add [Authorize] + [RequirePermission("Auth","Register")] back.
-        [HttpPost("register")]
+        [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
         {
             try
@@ -81,8 +81,8 @@ namespace NZWalks.API.Controllers.HR
             }
         }
 
-        // ── POST api/hr/auth/login ────────────────────────────────────────────
-        [HttpPost("login")]
+        // ── POST api/hr/auth/Login ─────────────────────────────────────────────
+        [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
         {
             try
@@ -157,8 +157,8 @@ namespace NZWalks.API.Controllers.HR
             }
         }
 
-        // ── POST api/hr/auth/logout ───────────────────────────────────────────
-        [HttpPost("logout")]
+        // ── POST api/hr/auth/Logout ────────────────────────────────────────────
+        [HttpPost("Logout")]
         [Authorize]
         public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto dto)
         {
@@ -185,10 +185,10 @@ namespace NZWalks.API.Controllers.HR
         private readonly IAuthRepository _authRepo;
         public RolesController(IAuthRepository authRepo) => _authRepo = authRepo;
 
-        // ── GET api/hr/roles ──────────────────────────────────────────────────
-        [HttpGet]
+        // ── GET api/hr/roles/GetRoles ─────────────────────────────────────────
+        [HttpGet("GetRoles")]
         [RequirePermission("Roles", "View")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetRoles()
         {
             var roles = await _authRepo.GetAllRolesAsync();
             var result = roles.Select(r => new RoleResponseDto
@@ -209,10 +209,10 @@ namespace NZWalks.API.Controllers.HR
             });
         }
 
-        // ── POST api/hr/roles ─────────────────────────────────────────────────
-        [HttpPost]
+        // ── POST api/hr/roles/CreateRole ──────────────────────────────────────
+        [HttpPost("CreateRole")]
         [RequirePermission("Roles", "Create")]
-        public async Task<IActionResult> Create([FromBody] CreateRoleRequestDto dto)
+        public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object>
@@ -240,10 +240,10 @@ namespace NZWalks.API.Controllers.HR
             });
         }
 
-        // ── POST api/hr/roles/assign-permissions ──────────────────────────────
-        [HttpPost("assign-permissions")]
+        // ── POST api/hr/roles/AssignPermissionsToRole ─────────────────────────
+        [HttpPost("AssignPermissionsToRole")]
         [RequirePermission("Roles", "AssignPermissions")]
-        public async Task<IActionResult> AssignPermissions([FromBody] AssignPermissionsRequestDto dto)
+        public async Task<IActionResult> AssignPermissionsToRole([FromBody] AssignPermissionsRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object>
@@ -288,10 +288,10 @@ namespace NZWalks.API.Controllers.HR
         private readonly IAuthRepository _authRepo;
         public PermissionsController(IAuthRepository authRepo) => _authRepo = authRepo;
 
-        // ── GET api/hr/permissions ────────────────────────────────────────────
-        [HttpGet]
+        // ── GET api/hr/permissions/GetPermissions ─────────────────────────────
+        [HttpGet("GetPermissions")]
         [RequirePermission("Permissions", "View")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetPermissions()
         {
             var perms = await _authRepo.GetAllPermissionsAsync();
             var result = perms.Select(p => new PermissionResponseDto
@@ -310,10 +310,10 @@ namespace NZWalks.API.Controllers.HR
             });
         }
 
-        // ── POST api/hr/permissions ───────────────────────────────────────────
-        [HttpPost]
+        // ── POST api/hr/permissions/CreatePermission ──────────────────────────
+        [HttpPost("CreatePermission")]
         [RequirePermission("Permissions", "Create")]
-        public async Task<IActionResult> Create([FromBody] CreatePermissionRequestDto dto)
+        public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object>
@@ -347,5 +347,117 @@ namespace NZWalks.API.Controllers.HR
                 }
             });
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Users Controller
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Route("api/hr/users")]
+    [ApiController]
+    [Authorize]
+    public class UsersController : ControllerBase
+    {
+        private readonly IAuthRepository _authRepo;
+        public UsersController(IAuthRepository authRepo) => _authRepo = authRepo;
+
+        // ── GET api/hr/users/GetUsers ─────────────────────────────────────────
+        [HttpGet("GetUsers")]
+        [RequirePermission("Users", "View")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _authRepo.GetAllUsersAsync();
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Users retrieved.",
+                Data = users.Select(MapResponse)
+            });
+        }
+
+        // ── GET api/hr/users/GetUserById?id={id} ──────────────────────────────
+        [HttpGet("GetUserById")]
+        [RequirePermission("Users", "View")]
+        public async Task<IActionResult> GetUserById([FromQuery] Guid id)
+        {
+            var user = await _authRepo.GetUserByIdAsync(id);
+            if (user == null)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
+
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User retrieved.", Data = MapResponse(user) });
+        }
+
+        // ── POST api/hr/users/CreateUser ──────────────────────────────────────
+        [HttpPost("CreateUser")]
+        [RequirePermission("Users", "Create")]
+        public async Task<IActionResult> CreateUser([FromBody] RegisterRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            var existing = await _authRepo.GetUserByEmailAsync(dto.Email);
+            if (existing != null)
+                return Conflict(new CommonApiResponse<object> { StatusCode = 409, IsSuccess = false, Message = "Email already registered.", Data = null });
+
+            var user = new AppUser
+            {
+                Name = dto.Name.Trim(),
+                Email = dto.Email.Trim(),
+                RoleId = dto.RoleId,
+                IsActive = true
+            };
+
+            var created = await _authRepo.RegisterAsync(user, dto.Password);
+            var full = await _authRepo.GetUserByIdAsync(created.Id);
+
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User created.", Data = MapResponse(full!) });
+        }
+
+        // ── PUT api/hr/users/UpdateUser?id={id} ───────────────────────────────
+        [HttpPut("UpdateUser")]
+        [RequirePermission("Users", "Update")]
+        public async Task<IActionResult> UpdateUser([FromQuery] Guid id, [FromBody] UpdateUserRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            var updated = await _authRepo.UpdateUserAsync(id, new AppUser
+            {
+                Name = dto.Name,
+                Email = dto.Email,
+                RoleId = dto.RoleId,
+                IsActive = dto.IsActive
+            });
+
+            if (updated == null)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
+
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User updated.", Data = MapResponse(updated) });
+        }
+
+        // ── DELETE api/hr/users/DeleteUser?id={id} (soft delete — deactivates) ─
+        [HttpDelete("DeleteUser")]
+        [RequirePermission("Users", "Delete")]
+        public async Task<IActionResult> DeleteUser([FromQuery] Guid id)
+        {
+            var deleted = await _authRepo.DeleteUserAsync(id);
+            if (!deleted)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
+
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User deactivated.", Data = null });
+        }
+
+        private static UserResponseDto MapResponse(AppUser u) => new()
+        {
+            Id = u.Id,
+            Name = u.Name,
+            Email = u.Email,
+            RoleId = u.RoleId,
+            RoleName = u.Role?.Name ?? string.Empty,
+            IsActive = u.IsActive,
+            LastLoginAt = u.LastLoginAt,
+            CreatedAt = u.CreatedAt
+        };
     }
 }

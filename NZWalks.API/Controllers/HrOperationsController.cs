@@ -22,7 +22,7 @@ namespace NZWalks.API.Controllers.HR
 
         // ── Leave Types ───────────────────────────────────────────────────────
 
-        [HttpGet("types")]
+        [HttpGet("GetLeaveTypes")]
         [RequirePermission("HR", "ViewLeave")]
         public async Task<IActionResult> GetLeaveTypes()
         {
@@ -38,7 +38,7 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave types retrieved.", Data = result });
         }
 
-        [HttpPost("types")]
+        [HttpPost("CreateLeaveType")]
         [RequirePermission("HR", "ManageLeaveTypes")]
         public async Task<IActionResult> CreateLeaveType([FromBody] CreateLeaveTypeRequestDto dto)
         {
@@ -58,18 +58,18 @@ namespace NZWalks.API.Controllers.HR
 
         // ── Leave Requests ────────────────────────────────────────────────────
 
-        [HttpGet("requests")]
+        [HttpGet("GetLeaveRequests")]
         [RequirePermission("HR", "ViewLeave")]
-        public async Task<IActionResult> GetRequests([FromQuery] Guid? employeeId, [FromQuery] string? status)
+        public async Task<IActionResult> GetLeaveRequests([FromQuery] Guid? employeeId, [FromQuery] string? status)
         {
             var requests = await _repo.GetLeaveRequestsAsync(employeeId, status);
             var result = requests.Select(MapLeaveRequestResponse);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave requests retrieved.", Data = result });
         }
 
-        [HttpGet("requests/{id:guid}")]
+        [HttpGet("GetLeaveRequestById")]
         [RequirePermission("HR", "ViewLeave")]
-        public async Task<IActionResult> GetRequestById(Guid id)
+        public async Task<IActionResult> GetLeaveRequestById([FromQuery] Guid id)
         {
             var lr = await _repo.GetLeaveRequestByIdAsync(id);
             if (lr == null)
@@ -77,9 +77,9 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave request retrieved.", Data = MapLeaveRequestResponse(lr) });
         }
 
-        [HttpPost("requests")]
+        [HttpPost("CreateLeaveRequest")]
         [RequirePermission("HR", "ApplyLeave")]
-        public async Task<IActionResult> CreateRequest([FromBody] CreateLeaveRequestDto dto)
+        public async Task<IActionResult> CreateLeaveRequest([FromBody] CreateLeaveRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -99,9 +99,9 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave request submitted.", Data = MapLeaveRequestResponse(created) });
         }
 
-        [HttpPut("requests/approve")]
+        [HttpPut("ApproveLeaveRequest")]
         [RequirePermission("HR", "ApproveLeave")]
-        public async Task<IActionResult> ApproveRequest([FromBody] ApproveLeaveRequestDto dto)
+        public async Task<IActionResult> ApproveLeaveRequest([FromBody] ApproveLeaveRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -118,9 +118,9 @@ namespace NZWalks.API.Controllers.HR
 
         // ── Leave Balances ────────────────────────────────────────────────────
 
-        [HttpGet("balances/{employeeId:guid}")]
+        [HttpGet("GetLeaveBalances")]
         [RequirePermission("HR", "ViewLeave")]
-        public async Task<IActionResult> GetBalances(Guid employeeId, [FromQuery] int year = 0)
+        public async Task<IActionResult> GetLeaveBalances([FromQuery] Guid employeeId, [FromQuery] int year = 0)
         {
             if (year == 0) year = DateTime.UtcNow.Year;
             var balances = await _repo.GetLeaveBalancesByEmployeeAsync(employeeId, year);
@@ -168,9 +168,9 @@ namespace NZWalks.API.Controllers.HR
         private readonly IAttendanceRepository _repo;
         public AttendanceController(IAttendanceRepository repo) => _repo = repo;
 
-        [HttpGet]
+        [HttpGet("GetAttendanceRecords")]
         [RequirePermission("HR", "ViewAttendance")]
-        public async Task<IActionResult> GetAll(
+        public async Task<IActionResult> GetAttendanceRecords(
             [FromQuery] Guid? employeeId,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to)
@@ -185,7 +185,7 @@ namespace NZWalks.API.Controllers.HR
             });
         }
 
-        [HttpPost("mark")]
+        [HttpPost("MarkAttendance")]
         [RequirePermission("HR", "MarkAttendance")]
         public async Task<IActionResult> MarkAttendance([FromBody] MarkAttendanceRequestDto dto)
         {
@@ -233,17 +233,17 @@ namespace NZWalks.API.Controllers.HR
         private readonly IPayrollRepository _repo;
         public PayrollController(IPayrollRepository repo) => _repo = repo;
 
-        [HttpGet]
+        [HttpGet("GetPayrolls")]
         [RequirePermission("HR", "ViewPayroll")]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? employeeId, [FromQuery] int? month, [FromQuery] int? year)
+        public async Task<IActionResult> GetPayrolls([FromQuery] Guid? employeeId, [FromQuery] int? month, [FromQuery] int? year)
         {
             var payrolls = await _repo.GetPayrollsAsync(employeeId, month, year);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Payroll records retrieved.", Data = payrolls.Select(MapPayrollResponse) });
         }
 
-        [HttpGet("{id:guid}")]
+        [HttpGet("GetPayrollById")]
         [RequirePermission("HR", "ViewPayroll")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetPayrollById([FromQuery] Guid id)
         {
             var payroll = await _repo.GetPayrollByIdAsync(id);
             if (payroll == null)
@@ -251,9 +251,9 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Payroll retrieved.", Data = MapPayrollResponse(payroll) });
         }
 
-        [HttpPost("generate")]
+        [HttpPost("GeneratePayroll")]
         [RequirePermission("HR", "ProcessPayroll")]
-        public async Task<IActionResult> Generate([FromBody] GeneratePayrollRequestDto dto)
+        public async Task<IActionResult> GeneratePayroll([FromBody] GeneratePayrollRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -282,9 +282,9 @@ namespace NZWalks.API.Controllers.HR
             }
         }
 
-        [HttpPut("{id:guid}/status")]
+        [HttpPut("UpdatePayrollStatus")]
         [RequirePermission("HR", "ProcessPayroll")]
-        public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] string status)
+        public async Task<IActionResult> UpdatePayrollStatus([FromQuery] Guid id, [FromQuery] string status)
         {
             var validStatuses = new[] { "Draft", "Approved", "Paid" };
             if (!validStatuses.Contains(status))
@@ -332,17 +332,17 @@ namespace NZWalks.API.Controllers.HR
         private readonly IPerformanceRepository _repo;
         public PerformanceController(IPerformanceRepository repo) => _repo = repo;
 
-        [HttpGet]
+        [HttpGet("GetPerformanceReviews")]
         [RequirePermission("HR", "ViewPerformance")]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? employeeId, [FromQuery] string? period)
+        public async Task<IActionResult> GetPerformanceReviews([FromQuery] Guid? employeeId, [FromQuery] string? period)
         {
             var reviews = await _repo.GetReviewsAsync(employeeId, period);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Reviews retrieved.", Data = reviews.Select(MapResponse) });
         }
 
-        [HttpGet("{id:guid}")]
+        [HttpGet("GetPerformanceReviewById")]
         [RequirePermission("HR", "ViewPerformance")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetPerformanceReviewById([FromQuery] Guid id)
         {
             var review = await _repo.GetReviewByIdAsync(id);
             if (review == null)
@@ -350,9 +350,9 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Review retrieved.", Data = MapResponse(review) });
         }
 
-        [HttpPost]
+        [HttpPost("CreatePerformanceReview")]
         [RequirePermission("HR", "CreatePerformanceReview")]
-        public async Task<IActionResult> Create([FromBody] CreatePerformanceReviewRequestDto dto)
+        public async Task<IActionResult> CreatePerformanceReview([FromBody] CreatePerformanceReviewRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -374,9 +374,9 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Performance review created.", Data = MapResponse(created) });
         }
 
-        [HttpPut("{id:guid}/status")]
+        [HttpPut("UpdatePerformanceReviewStatus")]
         [RequirePermission("HR", "CreatePerformanceReview")]
-        public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] string status)
+        public async Task<IActionResult> UpdatePerformanceReviewStatus([FromQuery] Guid id, [FromQuery] string status)
         {
             var validStatuses = new[] { "Draft", "Submitted", "Acknowledged" };
             if (!validStatuses.Contains(status))

@@ -20,18 +20,20 @@ namespace NZWalks.API.Controllers.HR
         private readonly IEmployeeRepository _repo;
         public DepartmentsController(IEmployeeRepository repo) => _repo = repo;
 
-        [HttpGet]
+        // GET api/hr/departments/GetDepartments
+        [HttpGet("GetDepartments")]
         [RequirePermission("HR", "ViewDepartment")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetDepartments()
         {
             var depts = await _repo.GetAllDepartmentsAsync();
             var result = depts.Select(MapDeptResponse);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Departments retrieved.", Data = result });
         }
 
-        [HttpGet("{id:guid}")]
+        // GET api/hr/departments/GetDepartmentById?id={id}
+        [HttpGet("GetDepartmentById")]
         [RequirePermission("HR", "ViewDepartment")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetDepartmentById([FromQuery] Guid id)
         {
             var dept = await _repo.GetDepartmentByIdAsync(id);
             if (dept == null)
@@ -39,9 +41,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Department retrieved.", Data = MapDeptResponse(dept) });
         }
 
-        [HttpPost]
+        // POST api/hr/departments/CreateDepartment
+        [HttpPost("CreateDepartment")]
         [RequirePermission("HR", "CreateDepartment")]
-        public async Task<IActionResult> Create([FromBody] CreateDepartmentRequestDto dto)
+        public async Task<IActionResult> CreateDepartment([FromBody] CreateDepartmentRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -51,9 +54,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Department created.", Data = MapDeptResponse(created) });
         }
 
-        [HttpPut("{id:guid}")]
+        // PUT api/hr/departments/UpdateDepartment?id={id}
+        [HttpPut("UpdateDepartment")]
         [RequirePermission("HR", "UpdateDepartment")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDepartmentRequestDto dto)
+        public async Task<IActionResult> UpdateDepartment([FromQuery] Guid id, [FromBody] UpdateDepartmentRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -99,17 +103,19 @@ namespace NZWalks.API.Controllers.HR
         private readonly IEmployeeRepository _repo;
         public JobPositionsController(IEmployeeRepository repo) => _repo = repo;
 
-        [HttpGet]
+        // GET api/hr/job-positions/GetJobPositions
+        [HttpGet("GetJobPositions")]
         [RequirePermission("HR", "ViewJobPosition")]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? departmentId)
+        public async Task<IActionResult> GetJobPositions([FromQuery] Guid? departmentId)
         {
             var positions = await _repo.GetAllJobPositionsAsync(departmentId);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Job positions retrieved.", Data = positions.Select(MapResponse) });
         }
 
-        [HttpGet("{id:guid}")]
+        // GET api/hr/job-positions/GetJobPositionById?id={id}
+        [HttpGet("GetJobPositionById")]
         [RequirePermission("HR", "ViewJobPosition")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetJobPositionById([FromQuery] Guid id)
         {
             var pos = await _repo.GetJobPositionByIdAsync(id);
             if (pos == null)
@@ -117,9 +123,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Job position retrieved.", Data = MapResponse(pos) });
         }
 
-        [HttpPost]
+        // POST api/hr/job-positions/CreateJobPosition
+        [HttpPost("CreateJobPosition")]
         [RequirePermission("HR", "CreateJobPosition")]
-        public async Task<IActionResult> Create([FromBody] CreateJobPositionRequestDto dto)
+        public async Task<IActionResult> CreateJobPosition([FromBody] CreateJobPositionRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -137,9 +144,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Job position created.", Data = MapResponse(created) });
         }
 
-        [HttpPut("{id:guid}")]
+        // PUT api/hr/job-positions/UpdateJobPosition?id={id}
+        [HttpPut("UpdateJobPosition")]
         [RequirePermission("HR", "UpdateJobPosition")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateJobPositionRequestDto dto)
+        public async Task<IActionResult> UpdateJobPosition([FromQuery] Guid id, [FromBody] UpdateJobPositionRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -194,10 +202,10 @@ namespace NZWalks.API.Controllers.HR
             _docRepo = docRepo;
         }
 
-        // GET api/hr/employees
-        [HttpGet]
+        // GET api/hr/employees/GetEmployees
+        [HttpGet("GetEmployees")]
         [RequirePermission("HR", "ViewEmployee")]
-        public async Task<IActionResult> GetAll(
+        public async Task<IActionResult> GetEmployees(
             [FromQuery] string? search,
             [FromQuery] Guid? departmentId,
             [FromQuery] string? status,
@@ -221,10 +229,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Employees retrieved.", Data = response });
         }
 
-        // GET api/hr/employees/{id}
-        [HttpGet("{id:guid}")]
+        // GET api/hr/employees/GetEmployeeById?id={id}
+        [HttpGet("GetEmployeeById")]
         [RequirePermission("HR", "ViewEmployee")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetEmployeeById([FromQuery] Guid id)
         {
             var emp = await _repo.GetByIdAsync(id);
             if (emp == null)
@@ -232,10 +240,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Employee retrieved.", Data = MapResponse(emp) });
         }
 
-        // POST api/hr/employees
-        [HttpPost]
+        // POST api/hr/employees/CreateEmployee
+        [HttpPost("CreateEmployee")]
         [RequirePermission("HR", "CreateEmployee")]
-        public async Task<IActionResult> Create([FromBody] CreateEmployeeRequestDto dto)
+        public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployeeRequestDto dto)
         {
             try
             {
@@ -256,10 +264,10 @@ namespace NZWalks.API.Controllers.HR
             }
         }
 
-        // PUT api/hr/employees/{id}
-        [HttpPut("{id:guid}")]
+        // PUT api/hr/employees/UpdateEmployee?id={id}
+        [HttpPut("UpdateEmployee")]
         [RequirePermission("HR", "UpdateEmployee")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEmployeeRequestDto dto)
+        public async Task<IActionResult> UpdateEmployee([FromQuery] Guid id, [FromBody] UpdateEmployeeRequestDto dto)
         {
             try
             {
@@ -279,10 +287,10 @@ namespace NZWalks.API.Controllers.HR
             }
         }
 
-        // DELETE api/hr/employees/{id}  (soft delete — marks as Terminated)
-        [HttpDelete("{id:guid}")]
+        // DELETE api/hr/employees/DeleteEmployee?id={id}  (soft delete — marks as Terminated)
+        [HttpDelete("DeleteEmployee")]
         [RequirePermission("HR", "DeleteEmployee")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> DeleteEmployee([FromQuery] Guid id)
         {
             var deleted = await _repo.DeleteAsync(id);
             if (!deleted)
@@ -290,10 +298,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Employee terminated.", Data = null });
         }
 
-        // GET api/hr/employees/{id}/documents
-        [HttpGet("{id:guid}/documents")]
+        // GET api/hr/employees/GetEmployeeDocuments?id={id}
+        [HttpGet("GetEmployeeDocuments")]
         [RequirePermission("HR", "ViewEmployee")]
-        public async Task<IActionResult> GetDocuments(Guid id)
+        public async Task<IActionResult> GetEmployeeDocuments([FromQuery] Guid id)
         {
             var docs = await _docRepo.GetDocumentsByEmployeeAsync(id);
             var result = docs.Select(d => new DocumentResponseDto
@@ -311,10 +319,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Documents retrieved.", Data = result });
         }
 
-        // POST api/hr/employees/documents
-        [HttpPost("documents")]
+        // POST api/hr/employees/UploadEmployeeDocument
+        [HttpPost("UploadEmployeeDocument")]
         [RequirePermission("HR", "UploadDocument")]
-        public async Task<IActionResult> UploadDocument([FromBody] UploadDocumentRequestDto dto)
+        public async Task<IActionResult> UploadEmployeeDocument([FromBody] UploadDocumentRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
@@ -332,10 +340,10 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Document uploaded.", Data = created.Id });
         }
 
-        // DELETE api/hr/employees/documents/{id}
-        [HttpDelete("documents/{id:guid}")]
+        // DELETE api/hr/employees/DeleteEmployeeDocument?id={id}
+        [HttpDelete("DeleteEmployeeDocument")]
         [RequirePermission("HR", "DeleteDocument")]
-        public async Task<IActionResult> DeleteDocument(Guid id)
+        public async Task<IActionResult> DeleteEmployeeDocument([FromQuery] Guid id)
         {
             var deleted = await _docRepo.DeleteDocumentAsync(id);
             if (!deleted)
