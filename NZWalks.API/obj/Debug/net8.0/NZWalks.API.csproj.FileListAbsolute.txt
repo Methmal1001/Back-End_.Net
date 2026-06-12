@@ -26,7 +26,6 @@ E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticweba
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticwebassets.build.json.cache
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticwebassets.development.json
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\NZWalks..A36796ED.Up2Date
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\NZWalks.API.dll
 E:\2026\projects\Back-End\Sample\NZWalks\NZWalks.API\obj\Debug\net8.0\refint\NZWalks.API.dll
