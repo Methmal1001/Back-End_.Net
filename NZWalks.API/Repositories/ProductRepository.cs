@@ -186,5 +186,10 @@ namespace NZWalks.API.Repositories
             return await _db.DeletedProducts
                 .FirstOrDefaultAsync(d => d.Id == deletedRecordId);
         }
+
+        public Task GetAllAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
