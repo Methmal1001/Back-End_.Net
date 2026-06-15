@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NZWalks.API.Data;
+using NZWalks.API.Filters;
 using NZWalks.API.Repositories;
 using NZWalks.API.Repositories.HR;
 using NZWalks.API.Services;
@@ -10,7 +11,10 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ActivityLogFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 
 // ── Swagger with JWT support ──────────────────────────────────────────────────
@@ -102,6 +106,9 @@ builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IPayrollRepository, PayrollRepository>();
 builder.Services.AddScoped<IPerformanceRepository, PerformanceRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+
+// Activity Log — NEW
+builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
 
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();  // ← NEW: JWT token service
