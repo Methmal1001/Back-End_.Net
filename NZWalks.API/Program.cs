@@ -111,7 +111,11 @@ builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
 
 // ── Services ──────────────────────────────────────────────────────────────────
-builder.Services.AddScoped<ITokenService, TokenService>();  // ← NEW: JWT token service
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+// Chatbot (Gemini-powered) — NEW
+builder.Services.AddHttpClient<NZWalks.API.Services.ChatbotService>();
+builder.Services.AddScoped<NZWalks.API.Services.IChatbotService, NZWalks.API.Services.ChatbotService>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
