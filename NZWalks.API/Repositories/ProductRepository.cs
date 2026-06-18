@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NZWalks.API.Data;
 using NZWalks.API.Models.Domain.Inventory;
 using NZWalks.API.Models.DTO.Product;
+using System.Text.Json;
 
 namespace NZWalks.API.Repositories
 {
@@ -88,12 +89,26 @@ namespace NZWalks.API.Repositories
         }
 
         // ── CREATE ────────────────────────────────────────────────────────────
-        public async Task<Product> CreateAsync(Product product)
+        public async Task<Product> CreateAsync(Product product, Guid userId, string userName)
         {
             product.Id = Guid.NewGuid();
             product.CreatedAt = DateTime.UtcNow;
+            product.CreatedByUserId = userId;
+            product.CreatedByUserName = userName;
 
             await _db.Products.AddAsync(product);
+            await _db.SaveChangesAsync();
+
+            await _db.ProductAuditLogs.AddAsync(new ProductAuditLog
+            {
+                Id = Guid.NewGuid(),
+                ProductId = product.Id,
+                Action = ProductAuditAction.Create,
+                UserId = userId,
+                UserName = userName,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new { @new = BuildSnapshot(product) })
+            });
             await _db.SaveChangesAsync();
 
             // Reload with navigation properties
@@ -101,10 +116,12 @@ namespace NZWalks.API.Repositories
         }
 
         // ── UPDATE ────────────────────────────────────────────────────────────
-        public async Task<Product?> UpdateAsync(Guid id, Product updatedProduct)
+        public async Task<Product?> UpdateAsync(Guid id, Product updatedProduct, Guid userId, string userName)
         {
             var existing = await _db.Products.FindAsync(id);
             if (existing == null) return null;
+
+            var oldSnapshot = BuildSnapshot(existing);
 
             existing.Sku = updatedProduct.Sku;
             existing.Name = updatedProduct.Name;
@@ -121,14 +138,29 @@ namespace NZWalks.API.Repositories
             existing.IsActive = updatedProduct.IsActive;
             existing.Barcode = updatedProduct.Barcode;
             existing.ImageUrl = updatedProduct.ImageUrl;
+            existing.UpdatedByUserId = userId;
+            existing.UpdatedByUserName = userName;
+            existing.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
 
-            return (await GetByIdAsync(id))!;
+            await _db.ProductAuditLogs.AddAsync(new ProductAuditLog
+            {
+                Id = Guid.NewGuid(),
+                ProductId = id,
+                Action = ProductAuditAction.Update,
+                UserId = userId,
+                UserName = userName,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new { old = oldSnapshot, @new = BuildSnapshot(existing) })
+            });
+            await _db.SaveChangesAsync();
+
+            return await GetByIdAsync(id);
         }
 
         // ── DELETE (soft-archive to DeletedProducts) ──────────────────────────
-        public async Task<DeletedProduct?> DeleteAsync(Guid id, DeleteProductRequestDto deleteRequest)
+        public async Task<DeletedProduct?> DeleteAsync(Guid id, string? deletionReason, Guid userId, string userName)
         {
             var product = await _db.Products
                 .Include(p => p.Category)
@@ -136,6 +168,8 @@ namespace NZWalks.API.Repositories
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null) return null;
+
+            var snapshot = BuildSnapshot(product);
 
             // Archive snapshot
             var deleted = new DeletedProduct
@@ -159,14 +193,26 @@ namespace NZWalks.API.Repositories
                 Barcode = product.Barcode,
                 ImageUrl = product.ImageUrl,
                 OriginalCreatedAt = product.CreatedAt,
-                DeletedByUserId = deleteRequest.DeletedByUserId,
-                DeletedByUserName = deleteRequest.DeletedByUserName,
-                DeletionReason = deleteRequest.DeletionReason,
+                DeletedByUserId = userId.ToString(),
+                DeletedByUserName = userName,
+                DeletionReason = deletionReason,
                 DeletedAt = DateTime.UtcNow
             };
 
             await _db.DeletedProducts.AddAsync(deleted);
             _db.Products.Remove(product);
+
+            await _db.ProductAuditLogs.AddAsync(new ProductAuditLog
+            {
+                Id = Guid.NewGuid(),
+                ProductId = id,
+                Action = ProductAuditAction.Delete,
+                UserId = userId,
+                UserName = userName,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new { old = snapshot })
+            });
+
             await _db.SaveChangesAsync();
 
             return deleted;
@@ -187,9 +233,47 @@ namespace NZWalks.API.Repositories
                 .FirstOrDefaultAsync(d => d.Id == deletedRecordId);
         }
 
+        // ── AUDIT LOGS (optionally filtered by product, paginated) ────────────
+        public async Task<(List<ProductAuditLog> logs, int totalCount)> GetProductAuditLogsAsync(Guid? productId, int page, int pageSize)
+        {
+            var query = _db.ProductAuditLogs.AsQueryable();
+
+            if (productId.HasValue)
+                query = query.Where(l => l.ProductId == productId.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var logs = await query
+                .OrderByDescending(l => l.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (logs, totalCount);
+        }
+
         public Task GetAllAsync()
         {
             throw new NotImplementedException();
         }
+
+        private static object BuildSnapshot(Product p) => new
+        {
+            p.Sku,
+            p.Name,
+            p.Description,
+            p.CategoryId,
+            p.SupplierId,
+            p.UnitCost,
+            p.UnitPrice,
+            p.UnitOfMeasure,
+            p.ReorderPoint,
+            p.ReorderQuantity,
+            p.MinStockLevel,
+            p.MaxStockLevel,
+            p.IsActive,
+            p.Barcode,
+            p.ImageUrl
+        };
     }
 }

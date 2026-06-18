@@ -1,10 +1,13 @@
 ﻿using Azure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NZWalks.API.Models.Domain.Inventory;
 using NZWalks.API.Models.DTO;
 using NZWalks.API.Models.DTO.Product;
 using NZWalks.API.Repositories;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace NZWalks.API.Controllers
 {
@@ -24,6 +27,7 @@ namespace NZWalks.API.Controllers
         // Query params: search, categoryId, isActive, sortBy, isDescending, page, pageSize
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetAllProducts")]
+        [Authorize]
         [ProducesResponseType(typeof(ProductListResponseDto), 200)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
@@ -150,6 +154,7 @@ namespace NZWalks.API.Controllers
         // POST  api/inventory/products
         // ══════════════════════════════════════════════════════════════════════
         [HttpPost("AddProducts")]
+        [Authorize]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(409)]
@@ -188,7 +193,8 @@ namespace NZWalks.API.Controllers
                     IsActive = true
                 };
 
-                var created = await _productRepo.CreateAsync(product);
+                var (userId, userName) = GetCurrentUser();
+                var created = await _productRepo.CreateAsync(product, userId, userName);
 
                 var response = new CommonDetailsDto<ProductResponseDto>
                 {
@@ -217,6 +223,7 @@ namespace NZWalks.API.Controllers
         // PUT  api/inventory/products/{id}
         // ══════════════════════════════════════════════════════════════════════
         [HttpPut("UpdateProducts")]
+        [Authorize]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -270,7 +277,8 @@ namespace NZWalks.API.Controllers
                     ImageUrl = dto.ImageUrl?.Trim()
                 };
 
-                var result = await _productRepo.UpdateAsync(id, updatedProduct);
+                var (userId, userName) = GetCurrentUser();
+                var result = await _productRepo.UpdateAsync(id, updatedProduct, userId, userName);
 
                 if (result == null)
                 {
@@ -308,6 +316,7 @@ namespace NZWalks.API.Controllers
         // Body: id + reason + user info
         // ══════════════════════════════════════════════════════════════════════
         [HttpDelete("DeleteProductsByID")]
+        [Authorize]
         [ProducesResponseType(typeof(DeletedProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -326,7 +335,8 @@ namespace NZWalks.API.Controllers
                     });
                 }
 
-                var deletedRecord = await _productRepo.DeleteAsync(dto.Id, dto);
+                var (userId, userName) = GetCurrentUser();
+                var deletedRecord = await _productRepo.DeleteAsync(dto.Id, dto.DeletionReason, userId, userName);
 
                 if (deletedRecord == null)
                 {
@@ -436,6 +446,44 @@ namespace NZWalks.API.Controllers
         }
 
         // ══════════════════════════════════════════════════════════════════════
+        // GET  api/inventory/GetProductAuditLogs
+        // Query params: productId (optional), page, pageSize
+        // ══════════════════════════════════════════════════════════════════════
+        [HttpGet("GetProductAuditLogs")]
+        [Authorize]
+        [ProducesResponseType(typeof(List<ProductAuditLogDto>), 200)]
+        public async Task<IActionResult> GetProductAuditLogs(
+            [FromQuery] Guid? productId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+            var (logs, totalCount) = await _productRepo.GetProductAuditLogsAsync(productId, page, pageSize);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = $"Retrieved {logs.Count} of {totalCount} audit log(s) (page {page}/{Math.Max(totalPages, 1)}).",
+                Data = logs.Select(MapToAuditLogDto).ToList()
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // PRIVATE HELPERS
+        // ══════════════════════════════════════════════════════════════════════
+        private (Guid userId, string userName) GetCurrentUser()
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            var userId = Guid.TryParse(idClaim, out var id) ? id : Guid.Empty;
+            var userName = User.FindFirstValue(ClaimTypes.Name) ?? "Unknown";
+            return (userId, userName);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
         // PRIVATE MAPPERS
         // ══════════════════════════════════════════════════════════════════════
         private static ProductResponseDto MapToResponseDto(Product p) => new()
@@ -458,7 +506,23 @@ namespace NZWalks.API.Controllers
             IsActive = p.IsActive,
             Barcode = p.Barcode,
             ImageUrl = p.ImageUrl,
-            CreatedAt = p.CreatedAt
+            CreatedAt = p.CreatedAt,
+            CreatedByUserId = p.CreatedByUserId,
+            CreatedByUserName = p.CreatedByUserName,
+            UpdatedByUserId = p.UpdatedByUserId,
+            UpdatedByUserName = p.UpdatedByUserName,
+            UpdatedAt = p.UpdatedAt
+        };
+
+        private static ProductAuditLogDto MapToAuditLogDto(ProductAuditLog l) => new()
+        {
+            Id = l.Id,
+            ProductId = l.ProductId,
+            Action = l.Action.ToString(),
+            UserId = l.UserId,
+            UserName = l.UserName,
+            Timestamp = l.Timestamp,
+            Details = l.Details
         };
 
         private static DeletedProductResponseDto MapToDeletedResponseDto(DeletedProduct d) => new()

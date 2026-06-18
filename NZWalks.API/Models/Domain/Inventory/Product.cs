@@ -20,6 +20,12 @@
         public string? ImageUrl { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        public Guid? CreatedByUserId { get; set; }
+        public string? CreatedByUserName { get; set; }
+        public Guid? UpdatedByUserId { get; set; }
+        public string? UpdatedByUserName { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
         public Category Category { get; set; } = null!;
         public Supplier? Supplier { get; set; }
         public ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
