@@ -53,8 +53,17 @@ namespace NZWalks.API.Data
         // ✅ Product audit trail
         public DbSet<ProductAuditLog> ProductAuditLogs { get; set; }
 
+        // ✅ Global activity log (all mutating requests)
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // ---- AppUser ----
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Username)
+                .IsUnique()
+                .HasFilter("[Username] IS NOT NULL");
+
             // ---- Composite PK ----
             modelBuilder.Entity<RolePermission>()
                 .HasKey(rp => new { rp.RoleId, rp.PermissionId });
@@ -313,6 +322,22 @@ namespace NZWalks.API.Data
                 .WithMany()
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ---- ActivityLog (global activity/audit log) ----
+            modelBuilder.Entity<ActivityLog>()
+                .ToTable("ActivityLogs");
+
+            modelBuilder.Entity<ActivityLog>()
+                .HasIndex(a => a.CreatedAt);
+
+            modelBuilder.Entity<ActivityLog>()
+                .HasIndex(a => a.UserId);
+
+            modelBuilder.Entity<ActivityLog>()
+                .HasIndex(a => a.Module);
+
+            modelBuilder.Entity<ActivityLog>()
+                .HasIndex(a => a.EntityId);
 
             // ---- Inventory ----
             modelBuilder.Entity<Inventory>()

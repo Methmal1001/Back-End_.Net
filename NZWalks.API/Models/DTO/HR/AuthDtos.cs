@@ -12,7 +12,7 @@ namespace NZWalks.API.Models.DTO.HR
 
     public class LoginRequestDto
     {
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required] public string UsernameOrEmail { get; set; } = string.Empty;
         [Required] public string Password { get; set; } = string.Empty;
     }
 
@@ -40,6 +40,8 @@ namespace NZWalks.API.Models.DTO.HR
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Username { get; set; }
+        public Guid? EmployeeId { get; set; }
         public string Role { get; set; } = string.Empty;
         public List<string> Permissions { get; set; } = new();
     }
@@ -57,11 +59,24 @@ namespace NZWalks.API.Models.DTO.HR
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Username { get; set; }
+        public Guid? EmployeeId { get; set; }
+        public string? EmployeeNo { get; set; }
         public Guid RoleId { get; set; }
         public string RoleName { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class CreateUserWithEmployeeRequestDto
+    {
+        [Required] public string FullName { get; set; } = string.Empty;
+        public string? EmployeeNo { get; set; }
+        [Required] public string Nic { get; set; } = string.Empty;
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required] public string Phone { get; set; } = string.Empty;
+        [Required] public Guid RoleId { get; set; }
     }
 
     public class CreateRoleRequestDto

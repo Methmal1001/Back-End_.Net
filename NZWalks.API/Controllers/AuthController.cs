@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NZWalks.API.Controllers;
 using NZWalks.API.Helpers;
+using NZWalks.API.Models.Domain.HR;
 using NZWalks.API.Models.Domain.Inventory;
 using NZWalks.API.Models.DTO.HR;
 using NZWalks.API.Repositories.HR;
@@ -95,13 +96,13 @@ namespace NZWalks.API.Controllers.HR
                         Data = ModelState
                     });
 
-                var user = await _authRepo.GetUserByEmailAsync(dto.Email);
+                var user = await _authRepo.GetUserByUsernameOrEmailAsync(dto.UsernameOrEmail);
                 if (user == null || !PasswordHelper.Verify(dto.Password, user.PasswordHash))
                     return Unauthorized(new CommonApiResponse<object>
                     {
                         StatusCode = 401,
                         IsSuccess = false,
-                        Message = "Invalid email or password.",
+                        Message = "Invalid username/email or password.",
                         Data = null
                     });
 
@@ -122,6 +123,8 @@ namespace NZWalks.API.Controllers.HR
 
                 await _authRepo.SaveRefreshTokenAsync(user.Id, refreshToken, refreshExpiry);
 
+                var employeeLink = await _authRepo.GetEmployeeLinkAsync(user.Id);
+
                 return Ok(new CommonApiResponse<LoginResponseDto>
                 {
                     StatusCode = 200,
@@ -138,6 +141,8 @@ namespace NZWalks.API.Controllers.HR
                             Id = user.Id,
                             Name = user.Name,
                             Email = user.Email,
+                            Username = user.Username,
+                            EmployeeId = employeeLink?.Id,
                             Role = user.Role?.Name ?? string.Empty,
                             Permissions = permissions
                         }
@@ -442,12 +447,13 @@ namespace NZWalks.API.Controllers.HR
         public async Task<IActionResult> GetUsers()
         {
             var users = await _authRepo.GetAllUsersAsync();
+            var employeeLinks = await _authRepo.GetEmployeeLinksAsync(users.Select(u => u.Id).ToList());
             return Ok(new CommonApiResponse<object>
             {
                 StatusCode = 200,
                 IsSuccess = true,
                 Message = "Users retrieved.",
-                Data = users.Select(MapResponse)
+                Data = users.Select(u => MapResponse(u, employeeLinks.GetValueOrDefault(u.Id)))
             });
         }
 
@@ -460,7 +466,8 @@ namespace NZWalks.API.Controllers.HR
             if (user == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
 
-            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User retrieved.", Data = MapResponse(user) });
+            var employee = await _authRepo.GetEmployeeLinkAsync(id);
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User retrieved.", Data = MapResponse(user, employee) });
         }
 
         // ── POST api/hr/users/CreateUser ──────────────────────────────────────
@@ -485,8 +492,41 @@ namespace NZWalks.API.Controllers.HR
 
             var created = await _authRepo.RegisterAsync(user, dto.Password);
             var full = await _authRepo.GetUserByIdAsync(created.Id);
+            var employee = await _authRepo.GetEmployeeLinkAsync(created.Id);
 
-            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User created.", Data = MapResponse(full!) });
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User created.", Data = MapResponse(full!, employee) });
+        }
+
+        // ── POST api/hr/users/CreateUserWithEmployee ──────────────────────────
+        [HttpPost("CreateUserWithEmployee")]
+        [RequireAdminOrPermission("Users", "Create")]
+        public async Task<IActionResult> CreateUserWithEmployee([FromBody] CreateUserWithEmployeeRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var result = await _authRepo.CreateUserWithEmployeeAsync(dto);
+
+            switch (result.Error)
+            {
+                case CreateUserWithEmployeeError.RoleNotFound:
+                    ModelState.AddModelError(nameof(dto.RoleId), "Role not found.");
+                    return ValidationProblem(ModelState);
+                case CreateUserWithEmployeeError.DuplicateEmail:
+                    ModelState.AddModelError(nameof(dto.Email), "Email is already in use.");
+                    return ValidationProblem(ModelState);
+                case CreateUserWithEmployeeError.DuplicateEmployeeNo:
+                    ModelState.AddModelError(nameof(dto.EmployeeNo), "Employee number is already in use.");
+                    return ValidationProblem(ModelState);
+            }
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "User created.",
+                Data = MapResponse(result.User!, result.Employee)
+            });
         }
 
         // ── PUT api/hr/users/UpdateUser?id={id} ───────────────────────────────
@@ -508,7 +548,8 @@ namespace NZWalks.API.Controllers.HR
             if (updated == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
 
-            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User updated.", Data = MapResponse(updated) });
+            var employee = await _authRepo.GetEmployeeLinkAsync(id);
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User updated.", Data = MapResponse(updated, employee) });
         }
 
         // ── DELETE api/hr/users/DeleteUser?id={id} (soft delete — deactivates) ─
@@ -523,11 +564,14 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User deactivated.", Data = null });
         }
 
-        private static UserResponseDto MapResponse(AppUser u) => new()
+        private static UserResponseDto MapResponse(AppUser u, Employee? employee = null) => new()
         {
             Id = u.Id,
             Name = u.Name,
             Email = u.Email,
+            Username = u.Username,
+            EmployeeId = employee?.Id,
+            EmployeeNo = employee?.EmployeeNo,
             RoleId = u.RoleId,
             RoleName = u.Role?.Name ?? string.Empty,
             IsActive = u.IsActive,

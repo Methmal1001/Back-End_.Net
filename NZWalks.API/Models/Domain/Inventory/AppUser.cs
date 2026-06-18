@@ -7,6 +7,7 @@ namespace NZWalks.API.Models.Domain.Inventory
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Username { get; set; }
         public string PasswordHash { get; set; } = string.Empty;
         public Guid RoleId { get; set; }
         public bool IsActive { get; set; } = true;

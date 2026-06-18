@@ -137,6 +137,33 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave balances retrieved.", Data = result });
         }
 
+        [HttpPost("SetLeaveBalance")]
+        [RequirePermission("HR", "ManageLeaveBalances")]
+        public async Task<IActionResult> SetLeaveBalance([FromBody] SetLeaveBalanceRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            var totalDays = (int)Math.Round(dto.TotalDays, MidpointRounding.AwayFromZero);
+            var balance = await _repo.UpsertLeaveBalanceAsync(dto.EmployeeId, dto.LeaveTypeId, dto.Year, totalDays);
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Leave balance set.",
+                Data = new
+                {
+                    EmployeeId = balance.EmployeeId,
+                    LeaveTypeId = balance.LeaveTypeId,
+                    Year = balance.Year,
+                    TotalDays = balance.TotalDays,
+                    UsedDays = balance.UsedDays,
+                    RemainingDays = balance.RemainingDays
+                }
+            });
+        }
+
         private static LeaveRequestResponseDto MapLeaveRequestResponse(LeaveRequest lr) => new()
         {
             Id = lr.Id,

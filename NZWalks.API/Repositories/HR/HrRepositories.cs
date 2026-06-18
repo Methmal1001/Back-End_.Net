@@ -16,7 +16,7 @@ namespace NZWalks.API.Repositories.HR
         Task<LeaveRequest?> ApproveLeaveRequestAsync(Guid id, string status, Guid approvedById, string? note);
         Task<LeaveBalance?> GetLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year);
         Task<List<LeaveBalance>> GetLeaveBalancesByEmployeeAsync(Guid employeeId, int year);
-        Task UpsertLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year, int totalDays);
+        Task<LeaveBalance> UpsertLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year, int totalDays);
     }
 
     public class LeaveRepository : ILeaveRepository
@@ -89,24 +89,28 @@ namespace NZWalks.API.Repositories.HR
                 .Where(lb => lb.EmployeeId == employeeId && lb.Year == year)
                 .ToListAsync();
 
-        public async Task UpsertLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year, int totalDays)
+        public async Task<LeaveBalance> UpsertLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year, int totalDays)
         {
             var existing = await GetLeaveBalanceAsync(employeeId, leaveTypeId, year);
             if (existing == null)
-                _db.LeaveBalances.Add(new LeaveBalance
+            {
+                existing = new LeaveBalance
                 {
                     EmployeeId = employeeId,
                     LeaveTypeId = leaveTypeId,
                     Year = year,
                     TotalDays = totalDays,
                     UsedDays = 0
-                });
+                };
+                _db.LeaveBalances.Add(existing);
+            }
             else
             {
                 existing.TotalDays = totalDays;
                 _db.LeaveBalances.Update(existing);
             }
             await _db.SaveChangesAsync();
+            return existing;
         }
     }
 

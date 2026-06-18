@@ -68,6 +68,14 @@ namespace NZWalks.API.Models.DTO.HR
         public int RemainingDays { get; set; }
     }
 
+    public class SetLeaveBalanceRequestDto
+    {
+        [Required] public Guid EmployeeId { get; set; }
+        [Required] public Guid LeaveTypeId { get; set; }
+        [Required, Range(2000, 2100)] public int Year { get; set; }
+        [Required] public decimal TotalDays { get; set; }
+    }
+
     // ── Attendance ──────────────────────────────────────────────────────────
 
     public class MarkAttendanceRequestDto
