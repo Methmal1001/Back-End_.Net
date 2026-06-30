@@ -10,8 +10,13 @@
         public double? WorkedHours { get; set; }
         public string Status { get; set; } = "Present";
         public string? Note { get; set; }
+        public string ApprovalStatus { get; set; } = "Pending";
+        public Guid? ApprovedByEmployeeId { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Employee Employee { get; set; } = null!;
+        public Employee? ApprovedByEmployee { get; set; }
     }
 }

@@ -121,6 +121,10 @@ namespace NZWalks.API.Repositories.HR
         Task<Attendance> MarkAttendanceAsync(Attendance attendance);
         Task<List<Attendance>> GetAttendancesAsync(Guid? employeeId, DateTime? from, DateTime? to);
         Task<Attendance?> GetByEmployeeAndDateAsync(Guid employeeId, DateTime date);
+        Task<Attendance?> GetByIdAsync(Guid id);
+        Task<List<Attendance>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
+        Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId);
+        Task<Attendance?> RejectAsync(Guid id, Guid approverEmployeeId, string reason);
     }
 
     public class AttendanceRepository : IAttendanceRepository
@@ -147,6 +151,9 @@ namespace NZWalks.API.Repositories.HR
             if (attendance.CheckInTime.HasValue && attendance.CheckOutTime.HasValue)
                 attendance.WorkedHours = (attendance.CheckOutTime - attendance.CheckInTime)!.Value.TotalHours;
 
+            var employee = await _db.Employees.FindAsync(attendance.EmployeeId);
+            attendance.ApprovalStatus = employee?.ManagerId == null ? "Approved" : "Pending";
+
             _db.Attendances.Add(attendance);
             await _db.SaveChangesAsync();
             return attendance;
@@ -154,7 +161,7 @@ namespace NZWalks.API.Repositories.HR
 
         public async Task<List<Attendance>> GetAttendancesAsync(Guid? employeeId, DateTime? from, DateTime? to)
         {
-            var query = _db.Attendances.Include(a => a.Employee).AsQueryable();
+            var query = _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee).AsQueryable();
             if (employeeId.HasValue) query = query.Where(a => a.EmployeeId == employeeId.Value);
             if (from.HasValue) query = query.Where(a => a.Date >= from.Value.Date);
             if (to.HasValue) query = query.Where(a => a.Date <= to.Value.Date);
@@ -164,6 +171,45 @@ namespace NZWalks.API.Repositories.HR
         public async Task<Attendance?> GetByEmployeeAndDateAsync(Guid employeeId, DateTime date)
             => await _db.Attendances.FirstOrDefaultAsync(
                 a => a.EmployeeId == employeeId && a.Date.Date == date.Date);
+
+        public async Task<Attendance?> GetByIdAsync(Guid id)
+            => await _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+        public async Task<List<Attendance>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId)
+            => await _db.Attendances
+                .Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
+                .Where(a => a.Employee.ManagerId == managerEmployeeId && a.ApprovalStatus == "Pending")
+                .OrderByDescending(a => a.Date)
+                .ToListAsync();
+
+        public async Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId)
+        {
+            var att = await _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (att == null) return null;
+
+            att.ApprovalStatus = "Approved";
+            att.ApprovedByEmployeeId = approverEmployeeId;
+            att.ApprovedAt = DateTime.UtcNow;
+            att.RejectionReason = null;
+            await _db.SaveChangesAsync();
+            return att;
+        }
+
+        public async Task<Attendance?> RejectAsync(Guid id, Guid approverEmployeeId, string reason)
+        {
+            var att = await _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (att == null) return null;
+
+            att.ApprovalStatus = "Rejected";
+            att.ApprovedByEmployeeId = approverEmployeeId;
+            att.ApprovedAt = DateTime.UtcNow;
+            att.RejectionReason = reason;
+            await _db.SaveChangesAsync();
+            return att;
+        }
     }
 
     // ── Payroll ───────────────────────────────────────────────────────────────

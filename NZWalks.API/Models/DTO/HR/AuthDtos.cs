@@ -41,6 +41,7 @@ namespace NZWalks.API.Models.DTO.HR
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string? Username { get; set; }
+        public string? EmpNo { get; set; }
         public Guid? EmployeeId { get; set; }
         public string Role { get; set; } = string.Empty;
         public List<string> Permissions { get; set; } = new();

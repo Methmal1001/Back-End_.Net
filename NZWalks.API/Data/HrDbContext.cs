@@ -96,8 +96,11 @@ namespace NZWalks.API.Data
             {
                 e.HasKey(a => a.Id);
                 e.HasIndex(a => new { a.EmployeeId, a.Date }).IsUnique();
+                e.Property(a => a.ApprovalStatus).HasMaxLength(20);
                 e.HasOne(a => a.Employee).WithMany(emp => emp.Attendances)
                     .HasForeignKey(a => a.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(a => a.ApprovedByEmployee).WithMany()
+                    .HasForeignKey(a => a.ApprovedByEmployeeId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Payroll>(e =>

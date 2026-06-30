@@ -142,6 +142,7 @@ namespace NZWalks.API.Controllers.HR
                             Name = user.Name,
                             Email = user.Email,
                             Username = user.Username,
+                            EmpNo = employeeLink?.EmployeeNo,
                             EmployeeId = employeeLink?.Id,
                             Role = user.Role?.Name ?? string.Empty,
                             Permissions = permissions
@@ -478,6 +479,10 @@ namespace NZWalks.API.Controllers.HR
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
 
+            var restricted = await IsRestrictedRoleCreationAsync(dto.RoleId);
+            if (restricted)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "Only Admin can create HR Admin or CEO accounts.", Data = null });
+
             var existing = await _authRepo.GetUserByEmailAsync(dto.Email);
             if (existing != null)
                 return Conflict(new CommonApiResponse<object> { StatusCode = 409, IsSuccess = false, Message = "Email already registered.", Data = null });
@@ -504,6 +509,10 @@ namespace NZWalks.API.Controllers.HR
         {
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
+
+            var restricted = await IsRestrictedRoleCreationAsync(dto.RoleId);
+            if (restricted)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "Only Admin can create HR Admin or CEO accounts.", Data = null });
 
             var result = await _authRepo.CreateUserWithEmployeeAsync(dto);
 
@@ -562,6 +571,18 @@ namespace NZWalks.API.Controllers.HR
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
 
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User deactivated.", Data = null });
+        }
+
+        // Creating "HR Admin" or "CEO" accounts is restricted to callers whose own role is "Admin",
+        // even though Users.Create otherwise allows HR Admin to create accounts (Manager/Employee/HR Assistant).
+        private async Task<bool> IsRestrictedRoleCreationAsync(Guid targetRoleId)
+        {
+            var targetRole = await _authRepo.GetRoleByIdAsync(targetRoleId);
+            if (targetRole == null || (targetRole.Name != "HR Admin" && targetRole.Name != "CEO"))
+                return false;
+
+            var callerRoleName = User.FindFirst("roleName")?.Value;
+            return !string.Equals(callerRoleName, "Admin", StringComparison.OrdinalIgnoreCase);
         }
 
         private static UserResponseDto MapResponse(AppUser u, Employee? employee = null) => new()
