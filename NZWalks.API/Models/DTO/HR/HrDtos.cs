@@ -34,7 +34,6 @@ namespace NZWalks.API.Models.DTO.HR
     public class ApproveLeaveRequestDto
     {
         [Required] public Guid LeaveRequestId { get; set; }
-        [Required] public Guid ApprovedById { get; set; }
         [Required] public string Status { get; set; } = string.Empty;
         public string? ApprovalNote { get; set; }
     }

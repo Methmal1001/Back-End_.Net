@@ -13,6 +13,8 @@ namespace NZWalks.API.Repositories.HR
         Task<LeaveRequest> CreateLeaveRequestAsync(LeaveRequest lr);
         Task<LeaveRequest?> GetLeaveRequestByIdAsync(Guid id);
         Task<List<LeaveRequest>> GetLeaveRequestsAsync(Guid? employeeId, string? status);
+        Task<List<LeaveRequest>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
+        Task<List<LeaveRequest>> GetAllPendingApprovalsAsync();
         Task<LeaveRequest?> ApproveLeaveRequestAsync(Guid id, string status, Guid approvedById, string? note);
         Task<LeaveBalance?> GetLeaveBalanceAsync(Guid employeeId, Guid leaveTypeId, int year);
         Task<List<LeaveBalance>> GetLeaveBalancesByEmployeeAsync(Guid employeeId, int year);
@@ -55,6 +57,20 @@ namespace NZWalks.API.Repositories.HR
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(lr => lr.Status == status);
             return await query.OrderByDescending(lr => lr.CreatedAt).ToListAsync();
         }
+
+        public async Task<List<LeaveRequest>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId)
+            => await _db.LeaveRequests
+                .Include(lr => lr.Employee).Include(lr => lr.LeaveType)
+                .Where(lr => lr.Employee.ManagerId == managerEmployeeId && lr.Status == "Pending")
+                .OrderByDescending(lr => lr.CreatedAt)
+                .ToListAsync();
+
+        public async Task<List<LeaveRequest>> GetAllPendingApprovalsAsync()
+            => await _db.LeaveRequests
+                .Include(lr => lr.Employee).Include(lr => lr.LeaveType)
+                .Where(lr => lr.Status == "Pending")
+                .OrderByDescending(lr => lr.CreatedAt)
+                .ToListAsync();
 
         public async Task<LeaveRequest?> ApproveLeaveRequestAsync(
             Guid id, string status, Guid approvedById, string? note)

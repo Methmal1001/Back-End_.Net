@@ -131,6 +131,35 @@ namespace NZWalks.API.Controllers.HR
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave request submitted.", Data = MapLeaveRequestResponse(created) });
         }
 
+        // ── GET api/hr/leave/GetPendingApprovals ────────────────────────────────
+        [HttpGet("GetPendingApprovals")]
+        [RequirePermission("HR", "ApproveLeave")]
+        public async Task<IActionResult> GetPendingApprovals()
+        {
+            List<LeaveRequest> records;
+
+            if (HrTierRoles.IsHrManagement(User))
+            {
+                records = await _repo.GetAllPendingApprovalsAsync();
+            }
+            else
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+                records = await _repo.GetPendingApprovalsForManagerAsync(callerEmployeeId.Value);
+            }
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Pending approvals retrieved.",
+                Data = records.Select(MapLeaveRequestResponse)
+            });
+        }
+
         [HttpPut("ApproveLeaveRequest")]
         [RequirePermission("HR", "ApproveLeave")]
         public async Task<IActionResult> ApproveLeaveRequest([FromBody] ApproveLeaveRequestDto dto)
@@ -141,7 +170,18 @@ namespace NZWalks.API.Controllers.HR
             if (dto.Status != "Approved" && dto.Status != "Rejected")
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Status must be 'Approved' or 'Rejected'.", Data = null });
 
-            var lr = await _repo.ApproveLeaveRequestAsync(dto.LeaveRequestId, dto.Status, dto.ApprovedById, dto.ApprovalNote);
+            var callerEmployeeId = await GetCallerEmployeeIdAsync();
+            if (callerEmployeeId == null)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+            var existing = await _repo.GetLeaveRequestByIdAsync(dto.LeaveRequestId);
+            if (existing == null)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Leave request not found.", Data = null });
+
+            if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
+
+            var lr = await _repo.ApproveLeaveRequestAsync(dto.LeaveRequestId, dto.Status, callerEmployeeId.Value, dto.ApprovalNote);
             if (lr == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Leave request not found.", Data = null });
 
