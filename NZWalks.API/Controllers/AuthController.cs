@@ -81,6 +81,62 @@ namespace NZWalks.API.Controllers.HR
             });
         }
 
+        // ── POST api/hr/auth/ResetPasswordWithNic ─────────────────────────────
+        // Resets the caller's own password after verifying their NIC matches
+        // their linked Employee record — no current password required.
+        [HttpPost("ResetPasswordWithNic")]
+        [Authorize]
+        public async Task<IActionResult> ResetPasswordWithNic([FromBody] ResetPasswordWithNicRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object>
+                {
+                    StatusCode = 400,
+                    IsSuccess = false,
+                    Message = "Validation failed",
+                    Data = ModelState
+                });
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new CommonApiResponse<object>
+                {
+                    StatusCode = 401,
+                    IsSuccess = false,
+                    Message = "Invalid token.",
+                    Data = null
+                });
+
+            var employee = await _authRepo.GetEmployeeLinkAsync(userId);
+            if (employee == null)
+                return StatusCode(403, new CommonApiResponse<object>
+                {
+                    StatusCode = 403,
+                    IsSuccess = false,
+                    Message = "No linked employee record for this account.",
+                    Data = null
+                });
+
+            if (!string.Equals(dto.Nic.Trim(), employee.NationalId?.Trim(), StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new CommonApiResponse<object>
+                {
+                    StatusCode = 400,
+                    IsSuccess = false,
+                    Message = "NIC does not match our records.",
+                    Data = null
+                });
+
+            await _authRepo.UpdatePasswordAsync(userId, PasswordHelper.Hash(dto.NewPassword));
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Password reset successfully.",
+                Data = null
+            });
+        }
+
         // ── POST api/hr/auth/Login ─────────────────────────────────────────────
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
