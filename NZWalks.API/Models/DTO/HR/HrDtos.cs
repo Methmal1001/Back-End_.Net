@@ -111,6 +111,36 @@ namespace NZWalks.API.Models.DTO.HR
         [Required] public string Reason { get; set; } = string.Empty;
     }
 
+    // ── Overtime ────────────────────────────────────────────────────────────
+
+    public class CreateOvertimeRequestDto
+    {
+        [Required] public Guid EmployeeId { get; set; }
+        [Required] public DateTime Date { get; set; }
+        [Required, Range(0.1, 24)] public double Hours { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    public class OvertimeResponseDto
+    {
+        public Guid Id { get; set; }
+        public Guid EmployeeId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public double Hours { get; set; }
+        public string? Reason { get; set; }
+        public string ApprovalStatus { get; set; } = string.Empty;
+        public string? ApprovedByName { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public string? RejectionReason { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class RejectOvertimeRequestDto
+    {
+        [Required] public string Reason { get; set; } = string.Empty;
+    }
+
     // ── Payroll ─────────────────────────────────────────────────────────────
 
     public class GeneratePayrollRequestDto

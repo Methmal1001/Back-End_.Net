@@ -15,6 +15,7 @@ namespace NZWalks.API.Data
         public DbSet<LeaveRequest> LeaveRequests { get; set; }
         public DbSet<LeaveBalance> LeaveBalances { get; set; }
         public DbSet<Attendance> Attendances { get; set; }
+        public DbSet<OvertimeRequest> OvertimeRequests { get; set; }
         public DbSet<Payroll> Payrolls { get; set; }
         public DbSet<PerformanceReview> PerformanceReviews { get; set; }
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
@@ -101,6 +102,16 @@ namespace NZWalks.API.Data
                     .HasForeignKey(a => a.EmployeeId).OnDelete(DeleteBehavior.Restrict);
                 e.HasOne(a => a.ApprovedByEmployee).WithMany()
                     .HasForeignKey(a => a.ApprovedByEmployeeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<OvertimeRequest>(e =>
+            {
+                e.HasKey(o => o.Id);
+                e.Property(o => o.ApprovalStatus).HasMaxLength(20);
+                e.HasOne(o => o.Employee).WithMany()
+                    .HasForeignKey(o => o.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(o => o.ApprovedByEmployee).WithMany()
+                    .HasForeignKey(o => o.ApprovedByEmployeeId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Payroll>(e =>

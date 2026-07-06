@@ -123,6 +123,7 @@ namespace NZWalks.API.Repositories.HR
         Task<Attendance?> GetByEmployeeAndDateAsync(Guid employeeId, DateTime date);
         Task<Attendance?> GetByIdAsync(Guid id);
         Task<List<Attendance>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
+        Task<List<Attendance>> GetAllPendingApprovalsAsync();
         Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId);
         Task<Attendance?> RejectAsync(Guid id, Guid approverEmployeeId, string reason);
     }
@@ -183,6 +184,13 @@ namespace NZWalks.API.Repositories.HR
                 .OrderByDescending(a => a.Date)
                 .ToListAsync();
 
+        public async Task<List<Attendance>> GetAllPendingApprovalsAsync()
+            => await _db.Attendances
+                .Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
+                .Where(a => a.ApprovalStatus == "Pending")
+                .OrderByDescending(a => a.Date)
+                .ToListAsync();
+
         public async Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId)
         {
             var att = await _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
@@ -209,6 +217,89 @@ namespace NZWalks.API.Repositories.HR
             att.RejectionReason = reason;
             await _db.SaveChangesAsync();
             return att;
+        }
+    }
+
+    // ── Overtime ──────────────────────────────────────────────────────────────
+
+    public interface IOvertimeRepository
+    {
+        Task<OvertimeRequest> CreateAsync(OvertimeRequest request);
+        Task<List<OvertimeRequest>> GetOvertimeRequestsAsync(Guid? employeeId, string? status);
+        Task<OvertimeRequest?> GetByIdAsync(Guid id);
+        Task<List<OvertimeRequest>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
+        Task<List<OvertimeRequest>> GetAllPendingApprovalsAsync();
+        Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId);
+        Task<OvertimeRequest?> RejectAsync(Guid id, Guid approverEmployeeId, string reason);
+    }
+
+    public class OvertimeRepository : IOvertimeRepository
+    {
+        private readonly HrDbContext _db;
+        public OvertimeRepository(HrDbContext db) => _db = db;
+
+        public async Task<OvertimeRequest> CreateAsync(OvertimeRequest request)
+        {
+            var employee = await _db.Employees.FindAsync(request.EmployeeId);
+            request.ApprovalStatus = employee?.ManagerId == null ? "Approved" : "Pending";
+
+            _db.OvertimeRequests.Add(request);
+            await _db.SaveChangesAsync();
+            return request;
+        }
+
+        public async Task<List<OvertimeRequest>> GetOvertimeRequestsAsync(Guid? employeeId, string? status)
+        {
+            var query = _db.OvertimeRequests.Include(o => o.Employee).Include(o => o.ApprovedByEmployee).AsQueryable();
+            if (employeeId.HasValue) query = query.Where(o => o.EmployeeId == employeeId.Value);
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(o => o.ApprovalStatus == status);
+            return await query.OrderByDescending(o => o.Date).ToListAsync();
+        }
+
+        public async Task<OvertimeRequest?> GetByIdAsync(Guid id)
+            => await _db.OvertimeRequests.Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+        public async Task<List<OvertimeRequest>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId)
+            => await _db.OvertimeRequests
+                .Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
+                .Where(o => o.Employee.ManagerId == managerEmployeeId && o.ApprovalStatus == "Pending")
+                .OrderByDescending(o => o.Date)
+                .ToListAsync();
+
+        public async Task<List<OvertimeRequest>> GetAllPendingApprovalsAsync()
+            => await _db.OvertimeRequests
+                .Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
+                .Where(o => o.ApprovalStatus == "Pending")
+                .OrderByDescending(o => o.Date)
+                .ToListAsync();
+
+        public async Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId)
+        {
+            var ot = await _db.OvertimeRequests.Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
+                .FirstOrDefaultAsync(o => o.Id == id);
+            if (ot == null) return null;
+
+            ot.ApprovalStatus = "Approved";
+            ot.ApprovedByEmployeeId = approverEmployeeId;
+            ot.ApprovedAt = DateTime.UtcNow;
+            ot.RejectionReason = null;
+            await _db.SaveChangesAsync();
+            return ot;
+        }
+
+        public async Task<OvertimeRequest?> RejectAsync(Guid id, Guid approverEmployeeId, string reason)
+        {
+            var ot = await _db.OvertimeRequests.Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
+                .FirstOrDefaultAsync(o => o.Id == id);
+            if (ot == null) return null;
+
+            ot.ApprovalStatus = "Rejected";
+            ot.ApprovedByEmployeeId = approverEmployeeId;
+            ot.ApprovedAt = DateTime.UtcNow;
+            ot.RejectionReason = reason;
+            await _db.SaveChangesAsync();
+            return ot;
         }
     }
 

@@ -3,13 +3,12 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace NZWalks.API.Helpers
 {
-    // Grants access if the user's role is "HR Admin", or if the user holds the
+    // Grants access if the user's role is one of the HR-tier management roles
+    // (Super Admin, CEO, HR Admin, HR Assistant), or if the user holds the
     // given "{module}.{action}" permission claim.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
     public class RequireAdminOrPermissionAttribute : Attribute, IAuthorizationFilter
     {
-        private const string AdminRoleName = "HR Admin";
-
         private readonly string _module;
         private readonly string _action;
 
@@ -29,10 +28,7 @@ namespace NZWalks.API.Helpers
                 return;
             }
 
-            var isAdmin = user.Claims
-                .Any(c => c.Type == "roleName" && c.Value.Equals(AdminRoleName, StringComparison.OrdinalIgnoreCase));
-
-            if (isAdmin) return;
+            if (HrTierRoles.IsHrManagement(user)) return;
 
             var requiredPerm = $"{_module}.{_action}";
             var hasPerm = user.Claims
@@ -45,7 +41,7 @@ namespace NZWalks.API.Helpers
                 {
                     StatusCode = 403,
                     IsSuccess = false,
-                    Message = $"Access denied. Requires '{AdminRoleName}' role or permission: {requiredPerm}"
+                    Message = $"Access denied. Requires an HR-tier management role or permission: {requiredPerm}"
                 })
                 { StatusCode = 403 };
             }

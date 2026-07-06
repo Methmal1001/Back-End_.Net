@@ -20,7 +20,13 @@ namespace NZWalks.API.Controllers.HR
     public class LeaveController : ControllerBase
     {
         private readonly ILeaveRepository _repo;
-        public LeaveController(ILeaveRepository repo) => _repo = repo;
+        private readonly IAuthRepository _authRepo;
+
+        public LeaveController(ILeaveRepository repo, IAuthRepository authRepo)
+        {
+            _repo = repo;
+            _authRepo = authRepo;
+        }
 
         // ── Leave Types ───────────────────────────────────────────────────────
 
@@ -64,6 +70,14 @@ namespace NZWalks.API.Controllers.HR
         [RequirePermission("HR", "ViewLeave")]
         public async Task<IActionResult> GetLeaveRequests([FromQuery] Guid? employeeId, [FromQuery] string? status)
         {
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                employeeId = callerEmployeeId;
+            }
+
             var requests = await _repo.GetLeaveRequestsAsync(employeeId, status);
             var result = requests.Select(MapLeaveRequestResponse);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave requests retrieved.", Data = result });
@@ -76,6 +90,14 @@ namespace NZWalks.API.Controllers.HR
             var lr = await _repo.GetLeaveRequestByIdAsync(id);
             if (lr == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Leave request not found.", Data = null });
+
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null || lr.EmployeeId != callerEmployeeId.Value)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You may only view your own leave requests.", Data = null });
+            }
+
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Leave request retrieved.", Data = MapLeaveRequestResponse(lr) });
         }
 
@@ -88,6 +110,14 @@ namespace NZWalks.API.Controllers.HR
 
             if (dto.EndDate < dto.StartDate)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "End date cannot be before start date.", Data = null });
+
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                dto.EmployeeId = callerEmployeeId.Value;
+            }
 
             var lr = new LeaveRequest
             {
@@ -124,6 +154,14 @@ namespace NZWalks.API.Controllers.HR
         [RequirePermission("HR", "ViewLeave")]
         public async Task<IActionResult> GetLeaveBalances([FromQuery] Guid employeeId, [FromQuery] int year = 0)
         {
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                employeeId = callerEmployeeId.Value;
+            }
+
             if (year == 0) year = DateTime.UtcNow.Year;
             var balances = await _repo.GetLeaveBalancesByEmployeeAsync(employeeId, year);
             var result = balances.Select(b => new LeaveBalanceResponseDto
@@ -164,6 +202,15 @@ namespace NZWalks.API.Controllers.HR
                     RemainingDays = balance.RemainingDays
                 }
             });
+        }
+
+        private async Task<Guid?> GetCallerEmployeeIdAsync()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId)) return null;
+
+            var employee = await _authRepo.GetEmployeeLinkAsync(userId);
+            return employee?.Id;
         }
 
         private static LeaveRequestResponseDto MapLeaveRequestResponse(LeaveRequest lr) => new()
@@ -210,6 +257,14 @@ namespace NZWalks.API.Controllers.HR
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to)
         {
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                employeeId = callerEmployeeId;
+            }
+
             var records = await _repo.GetAttendancesAsync(employeeId, from, to);
             return Ok(new CommonApiResponse<object>
             {
@@ -226,6 +281,14 @@ namespace NZWalks.API.Controllers.HR
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                dto.EmployeeId = callerEmployeeId.Value;
+            }
 
             var attendance = new Attendance
             {
@@ -246,11 +309,21 @@ namespace NZWalks.API.Controllers.HR
         [RequirePermission("HR", "ApproveAttendance")]
         public async Task<IActionResult> GetPendingApprovals()
         {
-            var callerEmployeeId = await GetCallerEmployeeIdAsync();
-            if (callerEmployeeId == null)
-                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+            List<Attendance> records;
 
-            var records = await _repo.GetPendingApprovalsForManagerAsync(callerEmployeeId.Value);
+            if (HrTierRoles.IsHrManagement(User))
+            {
+                records = await _repo.GetAllPendingApprovalsAsync();
+            }
+            else
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+                records = await _repo.GetPendingApprovalsForManagerAsync(callerEmployeeId.Value);
+            }
+
             return Ok(new CommonApiResponse<object>
             {
                 StatusCode = 200,
@@ -273,7 +346,7 @@ namespace NZWalks.API.Controllers.HR
             if (existing == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Attendance record not found.", Data = null });
 
-            if (existing.Employee.ManagerId != callerEmployeeId.Value)
+            if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
                 return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
 
             var result = await _repo.ApproveAsync(id, callerEmployeeId.Value);
@@ -296,7 +369,7 @@ namespace NZWalks.API.Controllers.HR
             if (existing == null)
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Attendance record not found.", Data = null });
 
-            if (existing.Employee.ManagerId != callerEmployeeId.Value)
+            if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
                 return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
 
             var result = await _repo.RejectAsync(id, callerEmployeeId.Value, dto.Reason);
@@ -328,6 +401,171 @@ namespace NZWalks.API.Controllers.HR
             ApprovedAt = a.ApprovedAt,
             RejectionReason = a.RejectionReason,
             CreatedAt = a.CreatedAt
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Overtime Controller
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Route("api/hr/overtime")]
+    [ApiController]
+    [Authorize]
+    public class OvertimeController : ControllerBase
+    {
+        private readonly IOvertimeRepository _repo;
+        private readonly IAuthRepository _authRepo;
+
+        public OvertimeController(IOvertimeRepository repo, IAuthRepository authRepo)
+        {
+            _repo = repo;
+            _authRepo = authRepo;
+        }
+
+        // ── GET api/hr/overtime/GetOvertimeRequests ─────────────────────────────
+        [HttpGet("GetOvertimeRequests")]
+        [RequirePermission("HR", "ViewOvertime")]
+        public async Task<IActionResult> GetOvertimeRequests([FromQuery] Guid? employeeId, [FromQuery] string? status)
+        {
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                employeeId = callerEmployeeId;
+            }
+
+            var records = await _repo.GetOvertimeRequestsAsync(employeeId, status);
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Overtime requests retrieved.",
+                Data = records.Select(MapOvertimeResponse)
+            });
+        }
+
+        // ── POST api/hr/overtime/CreateOvertimeRequest ──────────────────────────
+        [HttpPost("CreateOvertimeRequest")]
+        [RequirePermission("HR", "ApplyOvertime")]
+        public async Task<IActionResult> CreateOvertimeRequest([FromBody] CreateOvertimeRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            if (!HrTierRoles.IsHrManagement(User))
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+                dto.EmployeeId = callerEmployeeId.Value;
+            }
+
+            var request = new OvertimeRequest
+            {
+                EmployeeId = dto.EmployeeId,
+                Date = dto.Date.Date,
+                Hours = dto.Hours,
+                Reason = dto.Reason
+            };
+            var created = await _repo.CreateAsync(request);
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Overtime request submitted.", Data = MapOvertimeResponse(created) });
+        }
+
+        // ── GET api/hr/overtime/GetPendingApprovals ──────────────────────────────
+        [HttpGet("GetPendingApprovals")]
+        [RequirePermission("HR", "ApproveOvertime")]
+        public async Task<IActionResult> GetPendingApprovals()
+        {
+            List<OvertimeRequest> records;
+
+            if (HrTierRoles.IsHrManagement(User))
+            {
+                records = await _repo.GetAllPendingApprovalsAsync();
+            }
+            else
+            {
+                var callerEmployeeId = await GetCallerEmployeeIdAsync();
+                if (callerEmployeeId == null)
+                    return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+                records = await _repo.GetPendingApprovalsForManagerAsync(callerEmployeeId.Value);
+            }
+
+            return Ok(new CommonApiResponse<object>
+            {
+                StatusCode = 200,
+                IsSuccess = true,
+                Message = "Pending approvals retrieved.",
+                Data = records.Select(MapOvertimeResponse)
+            });
+        }
+
+        // ── PUT api/hr/overtime/ApproveOvertime?id={id} ─────────────────────────
+        [HttpPut("ApproveOvertime")]
+        [RequirePermission("HR", "ApproveOvertime")]
+        public async Task<IActionResult> ApproveOvertime([FromQuery] Guid id)
+        {
+            var callerEmployeeId = await GetCallerEmployeeIdAsync();
+            if (callerEmployeeId == null)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Overtime request not found.", Data = null });
+
+            if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
+
+            var result = await _repo.ApproveAsync(id, callerEmployeeId.Value);
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Overtime approved.", Data = MapOvertimeResponse(result!) });
+        }
+
+        // ── PUT api/hr/overtime/RejectOvertime?id={id} ──────────────────────────
+        [HttpPut("RejectOvertime")]
+        [RequirePermission("HR", "ApproveOvertime")]
+        public async Task<IActionResult> RejectOvertime([FromQuery] Guid id, [FromBody] RejectOvertimeRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
+
+            var callerEmployeeId = await GetCallerEmployeeIdAsync();
+            if (callerEmployeeId == null)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "No linked employee record for this account.", Data = null });
+
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null)
+                return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "Overtime request not found.", Data = null });
+
+            if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
+
+            var result = await _repo.RejectAsync(id, callerEmployeeId.Value, dto.Reason);
+            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Overtime rejected.", Data = MapOvertimeResponse(result!) });
+        }
+
+        private async Task<Guid?> GetCallerEmployeeIdAsync()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId)) return null;
+
+            var employee = await _authRepo.GetEmployeeLinkAsync(userId);
+            return employee?.Id;
+        }
+
+        private static OvertimeResponseDto MapOvertimeResponse(OvertimeRequest o) => new()
+        {
+            Id = o.Id,
+            EmployeeId = o.EmployeeId,
+            EmployeeName = o.Employee != null ? $"{o.Employee.FirstName} {o.Employee.LastName}" : string.Empty,
+            Date = o.Date,
+            Hours = o.Hours,
+            Reason = o.Reason,
+            ApprovalStatus = o.ApprovalStatus,
+            ApprovedByName = o.ApprovedByEmployee != null ? $"{o.ApprovedByEmployee.FirstName} {o.ApprovedByEmployee.LastName}" : null,
+            ApprovedAt = o.ApprovedAt,
+            RejectionReason = o.RejectionReason,
+            CreatedAt = o.CreatedAt
         };
     }
 

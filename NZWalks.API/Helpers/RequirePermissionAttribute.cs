@@ -25,6 +25,9 @@ namespace NZWalks.API.Helpers
                 return;
             }
 
+            // Super Admin / CEO have unrestricted access to every feature, present and future.
+            if (HrTierRoles.IsFullAccess(user)) return;
+
             var requiredPerm = $"{_module}.{_action}";
             var hasPerm = user.Claims
                 .Where(c => c.Type == "permission")
