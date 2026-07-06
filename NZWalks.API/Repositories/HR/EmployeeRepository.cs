@@ -23,6 +23,7 @@ namespace NZWalks.API.Repositories.HR
         Task<JobPosition> CreateJobPositionAsync(JobPosition pos);
         Task<JobPosition?> UpdateJobPositionAsync(Guid id, JobPosition updated);
         Task<string> GenerateEmployeeNoAsync();
+        Task<bool> IsManagerRoleEmployeeAsync(Guid employeeId);
     }
 
     public class EmployeeRepository : IEmployeeRepository
@@ -185,6 +186,16 @@ namespace NZWalks.API.Repositories.HR
             existing.IsActive = updated.IsActive;
             await _db.SaveChangesAsync();
             return existing;
+        }
+
+        public async Task<bool> IsManagerRoleEmployeeAsync(Guid employeeId)
+        {
+            var employee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId);
+            if (employee?.AppUserId == null) return false;
+
+            var user = await _db.Users.Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == employee.AppUserId.Value);
+            return user?.Role?.Name == "Manager";
         }
     }
 }

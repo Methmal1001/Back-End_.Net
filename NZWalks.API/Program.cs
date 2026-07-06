@@ -103,6 +103,7 @@ builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<ILeaveRepository, LeaveRepository>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<IOvertimeRepository, OvertimeRepository>();
 builder.Services.AddScoped<IPayrollRepository, PayrollRepository>();
 builder.Services.AddScoped<IPerformanceRepository, PerformanceRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
@@ -127,6 +128,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+await NZWalks.API.Data.HrSeedData.SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

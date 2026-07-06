@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NZWalks.API.Data;
 
@@ -11,9 +12,11 @@ using NZWalks.API.Data;
 namespace NZWalks.API.Migrations.HrDb
 {
     [DbContext(typeof(HrDbContext))]
-    partial class HrDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260630103329_AddAttendanceApprovalFields")]
+    partial class AddAttendanceApprovalFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -424,50 +427,6 @@ namespace NZWalks.API.Migrations.HrDb
                     b.ToTable("LeaveTypes");
                 });
 
-            modelBuilder.Entity("NZWalks.API.Models.Domain.HR.OvertimeRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ApprovalStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ApprovedByEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("EmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<double>("Hours")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RejectionReason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApprovedByEmployeeId");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("OvertimeRequests");
-                });
-
             modelBuilder.Entity("NZWalks.API.Models.Domain.HR.Payroll", b =>
                 {
                     b.Property<Guid>("Id")
@@ -803,24 +762,6 @@ namespace NZWalks.API.Migrations.HrDb
                     b.Navigation("Employee");
 
                     b.Navigation("LeaveType");
-                });
-
-            modelBuilder.Entity("NZWalks.API.Models.Domain.HR.OvertimeRequest", b =>
-                {
-                    b.HasOne("NZWalks.API.Models.Domain.HR.Employee", "ApprovedByEmployee")
-                        .WithMany()
-                        .HasForeignKey("ApprovedByEmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("NZWalks.API.Models.Domain.HR.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ApprovedByEmployee");
-
-                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("NZWalks.API.Models.Domain.HR.Payroll", b =>

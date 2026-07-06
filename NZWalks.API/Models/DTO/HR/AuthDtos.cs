@@ -2,14 +2,6 @@
 
 namespace NZWalks.API.Models.DTO.HR
 {
-    public class RegisterRequestDto
-    {
-        [Required] public string Name { get; set; } = string.Empty;
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
-        [Required, MinLength(8)] public string Password { get; set; } = string.Empty;
-        [Required] public Guid RoleId { get; set; }
-    }
-
     public class LoginRequestDto
     {
         [Required] public string UsernameOrEmail { get; set; } = string.Empty;
@@ -41,6 +33,7 @@ namespace NZWalks.API.Models.DTO.HR
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string? Username { get; set; }
+        public string? EmpNo { get; set; }
         public Guid? EmployeeId { get; set; }
         public string Role { get; set; } = string.Empty;
         public List<string> Permissions { get; set; } = new();

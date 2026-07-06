@@ -22,7 +22,6 @@ namespace NZWalks.API.Repositories.HR
     {
         Task<AppUser?> GetUserByEmailAsync(string email);
         Task<AppUser?> GetUserByUsernameOrEmailAsync(string usernameOrEmail);
-        Task<AppUser> RegisterAsync(AppUser user, string rawPassword);
         Task<List<AppUser>> GetAllUsersAsync();
         Task<AppUser?> GetUserByIdAsync(Guid id);
         Task<AppUser?> UpdateUserAsync(Guid id, AppUser user);
@@ -75,15 +74,6 @@ namespace NZWalks.API.Repositories.HR
                 .FirstOrDefaultAsync(u =>
                     (u.Username != null && u.Username.ToLower() == value) ||
                     u.Email.ToLower() == value);
-        }
-
-        public async Task<AppUser> RegisterAsync(AppUser user, string rawPassword)
-        {
-            user.Email = user.Email.ToLower().Trim();
-            user.PasswordHash = PasswordHelper.Hash(rawPassword);
-            _inv.Users.Add(user);
-            await _inv.SaveChangesAsync();
-            return user;
         }
 
         public async Task<List<AppUser>> GetAllUsersAsync()

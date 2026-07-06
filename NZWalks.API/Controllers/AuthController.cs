@@ -142,6 +142,7 @@ namespace NZWalks.API.Controllers.HR
                             Name = user.Name,
                             Email = user.Email,
                             Username = user.Username,
+                            EmpNo = employeeLink?.EmployeeNo,
                             EmployeeId = employeeLink?.Id,
                             Role = user.Role?.Name ?? string.Empty,
                             Permissions = permissions
@@ -471,39 +472,19 @@ namespace NZWalks.API.Controllers.HR
         }
 
         // ── POST api/hr/users/CreateUser ──────────────────────────────────────
+        // Every user created here is always paired with an Employee record —
+        // there is no separate "user only" creation path. Restricted to the
+        // HR-tier management roles (Super Admin, CEO, HR Admin, HR Assistant).
         [HttpPost("CreateUser")]
         [RequireAdminOrPermission("Users", "Create")]
-        public async Task<IActionResult> CreateUser([FromBody] RegisterRequestDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
-
-            var existing = await _authRepo.GetUserByEmailAsync(dto.Email);
-            if (existing != null)
-                return Conflict(new CommonApiResponse<object> { StatusCode = 409, IsSuccess = false, Message = "Email already registered.", Data = null });
-
-            var user = new AppUser
-            {
-                Name = dto.Name.Trim(),
-                Email = dto.Email.Trim(),
-                RoleId = dto.RoleId,
-                IsActive = true
-            };
-
-            var created = await _authRepo.RegisterAsync(user, dto.Password);
-            var full = await _authRepo.GetUserByIdAsync(created.Id);
-            var employee = await _authRepo.GetEmployeeLinkAsync(created.Id);
-
-            return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User created.", Data = MapResponse(full!, employee) });
-        }
-
-        // ── POST api/hr/users/CreateUserWithEmployee ──────────────────────────
-        [HttpPost("CreateUserWithEmployee")]
-        [RequireAdminOrPermission("Users", "Create")]
-        public async Task<IActionResult> CreateUserWithEmployee([FromBody] CreateUserWithEmployeeRequestDto dto)
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserWithEmployeeRequestDto dto)
         {
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
+
+            var restricted = await IsRestrictedRoleCreationAsync(dto.RoleId);
+            if (restricted)
+                return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "Only Super Admin or CEO can create Super Admin or CEO accounts.", Data = null });
 
             var result = await _authRepo.CreateUserWithEmployeeAsync(dto);
 
@@ -562,6 +543,19 @@ namespace NZWalks.API.Controllers.HR
                 return NotFound(new CommonApiResponse<object> { StatusCode = 404, IsSuccess = false, Message = "User not found.", Data = null });
 
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "User deactivated.", Data = null });
+        }
+
+        // Creating a "Super Admin" or "CEO" account is restricted to callers who
+        // are themselves already Super Admin/CEO — HR Admin/HR Assistant can create
+        // any other account (HR Admin, HR Assistant, Employee, or custom roles)
+        // but cannot mint top-tier accounts.
+        private async Task<bool> IsRestrictedRoleCreationAsync(Guid targetRoleId)
+        {
+            var targetRole = await _authRepo.GetRoleByIdAsync(targetRoleId);
+            if (targetRole == null || !HrTierRoles.FullAccess.Contains(targetRole.Name))
+                return false;
+
+            return !HrTierRoles.IsFullAccess(User);
         }
 
         private static UserResponseDto MapResponse(AppUser u, Employee? employee = null) => new()
