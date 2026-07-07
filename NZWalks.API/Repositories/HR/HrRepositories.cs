@@ -140,7 +140,7 @@ namespace NZWalks.API.Repositories.HR
         Task<Attendance?> GetByIdAsync(Guid id);
         Task<List<Attendance>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
         Task<List<Attendance>> GetAllPendingApprovalsAsync();
-        Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId);
+        Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId, string? note);
         Task<Attendance?> RejectAsync(Guid id, Guid approverEmployeeId, string reason);
     }
 
@@ -207,7 +207,7 @@ namespace NZWalks.API.Repositories.HR
                 .OrderByDescending(a => a.Date)
                 .ToListAsync();
 
-        public async Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId)
+        public async Task<Attendance?> ApproveAsync(Guid id, Guid approverEmployeeId, string? note)
         {
             var att = await _db.Attendances.Include(a => a.Employee).Include(a => a.ApprovedByEmployee)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -216,6 +216,7 @@ namespace NZWalks.API.Repositories.HR
             att.ApprovalStatus = "Approved";
             att.ApprovedByEmployeeId = approverEmployeeId;
             att.ApprovedAt = DateTime.UtcNow;
+            att.ApprovalNote = note;
             att.RejectionReason = null;
             await _db.SaveChangesAsync();
             return att;
@@ -245,7 +246,7 @@ namespace NZWalks.API.Repositories.HR
         Task<OvertimeRequest?> GetByIdAsync(Guid id);
         Task<List<OvertimeRequest>> GetPendingApprovalsForManagerAsync(Guid managerEmployeeId);
         Task<List<OvertimeRequest>> GetAllPendingApprovalsAsync();
-        Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId);
+        Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId, string? note);
         Task<OvertimeRequest?> RejectAsync(Guid id, Guid approverEmployeeId, string reason);
     }
 
@@ -290,7 +291,7 @@ namespace NZWalks.API.Repositories.HR
                 .OrderByDescending(o => o.Date)
                 .ToListAsync();
 
-        public async Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId)
+        public async Task<OvertimeRequest?> ApproveAsync(Guid id, Guid approverEmployeeId, string? note)
         {
             var ot = await _db.OvertimeRequests.Include(o => o.Employee).Include(o => o.ApprovedByEmployee)
                 .FirstOrDefaultAsync(o => o.Id == id);
@@ -299,6 +300,7 @@ namespace NZWalks.API.Repositories.HR
             ot.ApprovalStatus = "Approved";
             ot.ApprovedByEmployeeId = approverEmployeeId;
             ot.ApprovedAt = DateTime.UtcNow;
+            ot.ApprovalNote = note;
             ot.RejectionReason = null;
             await _db.SaveChangesAsync();
             return ot;

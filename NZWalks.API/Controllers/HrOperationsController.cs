@@ -376,7 +376,7 @@ namespace NZWalks.API.Controllers.HR
         // ── PUT api/hr/attendance/ApproveAttendance?id={id} ─────────────────────
         [HttpPut("ApproveAttendance")]
         [RequirePermission("HR", "ApproveAttendance")]
-        public async Task<IActionResult> ApproveAttendance([FromQuery] Guid id)
+        public async Task<IActionResult> ApproveAttendance([FromQuery] Guid id, [FromBody] ApproveAttendanceRequestDto? dto)
         {
             var callerEmployeeId = await GetCallerEmployeeIdAsync();
             if (callerEmployeeId == null)
@@ -389,7 +389,7 @@ namespace NZWalks.API.Controllers.HR
             if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
                 return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
 
-            var result = await _repo.ApproveAsync(id, callerEmployeeId.Value);
+            var result = await _repo.ApproveAsync(id, callerEmployeeId.Value, dto?.Note);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Attendance approved.", Data = MapAttendanceResponse(result!) });
         }
 
@@ -439,6 +439,7 @@ namespace NZWalks.API.Controllers.HR
             ApprovalStatus = a.ApprovalStatus,
             ApprovedByName = a.ApprovedByEmployee != null ? $"{a.ApprovedByEmployee.FirstName} {a.ApprovedByEmployee.LastName}" : null,
             ApprovedAt = a.ApprovedAt,
+            ApprovalNote = a.ApprovalNote,
             RejectionReason = a.RejectionReason,
             CreatedAt = a.CreatedAt
         };
@@ -544,7 +545,7 @@ namespace NZWalks.API.Controllers.HR
         // ── PUT api/hr/overtime/ApproveOvertime?id={id} ─────────────────────────
         [HttpPut("ApproveOvertime")]
         [RequirePermission("HR", "ApproveOvertime")]
-        public async Task<IActionResult> ApproveOvertime([FromQuery] Guid id)
+        public async Task<IActionResult> ApproveOvertime([FromQuery] Guid id, [FromBody] ApproveOvertimeRequestDto? dto)
         {
             var callerEmployeeId = await GetCallerEmployeeIdAsync();
             if (callerEmployeeId == null)
@@ -557,7 +558,7 @@ namespace NZWalks.API.Controllers.HR
             if (!HrTierRoles.IsHrManagement(User) && existing.Employee.ManagerId != callerEmployeeId.Value)
                 return StatusCode(403, new CommonApiResponse<object> { StatusCode = 403, IsSuccess = false, Message = "You are not this employee's manager.", Data = null });
 
-            var result = await _repo.ApproveAsync(id, callerEmployeeId.Value);
+            var result = await _repo.ApproveAsync(id, callerEmployeeId.Value, dto?.Note);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Overtime approved.", Data = MapOvertimeResponse(result!) });
         }
 
@@ -604,6 +605,7 @@ namespace NZWalks.API.Controllers.HR
             ApprovalStatus = o.ApprovalStatus,
             ApprovedByName = o.ApprovedByEmployee != null ? $"{o.ApprovedByEmployee.FirstName} {o.ApprovedByEmployee.LastName}" : null,
             ApprovedAt = o.ApprovedAt,
+            ApprovalNote = o.ApprovalNote,
             RejectionReason = o.RejectionReason,
             CreatedAt = o.CreatedAt
         };

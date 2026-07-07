@@ -167,6 +167,7 @@ namespace NZWalks.API.Controllers.HR
             ApprovalStatus = o.ApprovalStatus,
             ApprovedByName = o.ApprovedByEmployee != null ? $"{o.ApprovedByEmployee.FirstName} {o.ApprovedByEmployee.LastName}" : null,
             ApprovedAt = o.ApprovedAt,
+            ApprovalNote = o.ApprovalNote,
             RejectionReason = o.RejectionReason,
             CreatedAt = o.CreatedAt
         };

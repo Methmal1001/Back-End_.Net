@@ -101,8 +101,14 @@ namespace NZWalks.API.Models.DTO.HR
         public string ApprovalStatus { get; set; } = string.Empty;
         public string? ApprovedByName { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        public string? ApprovalNote { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class ApproveAttendanceRequestDto
+    {
+        public string? Note { get; set; }
     }
 
     public class RejectAttendanceRequestDto
@@ -131,8 +137,14 @@ namespace NZWalks.API.Models.DTO.HR
         public string ApprovalStatus { get; set; } = string.Empty;
         public string? ApprovedByName { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        public string? ApprovalNote { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class ApproveOvertimeRequestDto
+    {
+        public string? Note { get; set; }
     }
 
     public class RejectOvertimeRequestDto
