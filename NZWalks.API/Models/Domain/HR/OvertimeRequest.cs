@@ -10,6 +10,7 @@ namespace NZWalks.API.Models.Domain.HR
         public string ApprovalStatus { get; set; } = "Pending";
         public Guid? ApprovedByEmployeeId { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        public string? ApprovalNote { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

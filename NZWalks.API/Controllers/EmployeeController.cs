@@ -49,9 +49,6 @@ namespace NZWalks.API.Controllers.HR
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
 
-            if (dto.ManagerId.HasValue && !await _repo.IsManagerRoleEmployeeAsync(dto.ManagerId.Value))
-                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Selected manager must be an employee whose linked account has the Manager role.", Data = null });
-
             var dept = new Department { Name = dto.Name, Description = dto.Description, Code = dto.Code, ManagerId = dto.ManagerId };
             var created = await _repo.CreateDepartmentAsync(dept);
             return Ok(new CommonApiResponse<object> { StatusCode = 200, IsSuccess = true, Message = "Department created.", Data = MapDeptResponse(created) });
@@ -64,9 +61,6 @@ namespace NZWalks.API.Controllers.HR
         {
             if (!ModelState.IsValid)
                 return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Validation failed", Data = ModelState });
-
-            if (dto.ManagerId.HasValue && !await _repo.IsManagerRoleEmployeeAsync(dto.ManagerId.Value))
-                return BadRequest(new CommonApiResponse<object> { StatusCode = 400, IsSuccess = false, Message = "Selected manager must be an employee whose linked account has the Manager role.", Data = null });
 
             var updated = await _repo.UpdateDepartmentAsync(id, new Department
             {
