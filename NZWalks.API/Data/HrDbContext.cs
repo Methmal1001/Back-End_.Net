@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NZWalks.API.Models.Domain.HR;
 using NZWalks.API.Models.Domain.Inventory;
+using NZWalks.API.Models.Domain.WhatsApp;
 
 namespace NZWalks.API.Data
 {
@@ -20,6 +21,7 @@ namespace NZWalks.API.Data
         public DbSet<PerformanceReview> PerformanceReviews { get; set; }
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
         public DbSet<HrRefreshToken> HrRefreshTokens { get; set; }
+        public DbSet<WhatsAppConversation> WhatsAppConversations { get; set; }
 
         // Shared read-only tables (owned by InventoryDbContext)
         public DbSet<AppUser> Users { get; set; }
@@ -143,6 +145,13 @@ namespace NZWalks.API.Data
                 e.HasKey(d => d.Id);
                 e.HasOne(d => d.Employee).WithMany(emp => emp.Documents)
                     .HasForeignKey(d => d.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<WhatsAppConversation>(e =>
+            {
+                e.HasKey(w => w.Id);
+                e.Property(w => w.PhoneNumber).HasMaxLength(20).IsRequired();
+                e.HasIndex(w => w.PhoneNumber).IsUnique();
             });
         }
     }
