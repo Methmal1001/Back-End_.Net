@@ -103,6 +103,7 @@ builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("W
 // Existing
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
 
 // HR — NEW
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
