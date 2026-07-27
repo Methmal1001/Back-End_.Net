@@ -1,7 +1,7 @@
 ﻿using Azure;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NZWalks.API.Helpers;
 using NZWalks.API.Models.Domain.Inventory;
 using NZWalks.API.Models.DTO;
 using NZWalks.API.Models.DTO.Product;
@@ -27,7 +27,7 @@ namespace NZWalks.API.Controllers
         // Query params: search, categoryId, isActive, sortBy, isDescending, page, pageSize
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetAllProducts")]
-        [Authorize]
+        [RequirePermission("Products", "View")]
         [ProducesResponseType(typeof(ProductListResponseDto), 200)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
@@ -68,6 +68,7 @@ namespace NZWalks.API.Controllers
         // GET  api/inventory/products/{id}
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetProductById")]
+        [RequirePermission("Products", "View")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetById([FromQuery] Guid id)
@@ -111,6 +112,7 @@ namespace NZWalks.API.Controllers
         // GET  api/inventory/products/sku/{sku}
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetProductBySku")]
+        [RequirePermission("Products", "View")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetBySku([FromQuery] string sku)
@@ -154,7 +156,7 @@ namespace NZWalks.API.Controllers
         // POST  api/inventory/products
         // ══════════════════════════════════════════════════════════════════════
         [HttpPost("AddProducts")]
-        [Authorize]
+        [RequirePermission("Products", "Create")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(409)]
@@ -223,7 +225,7 @@ namespace NZWalks.API.Controllers
         // PUT  api/inventory/products/{id}
         // ══════════════════════════════════════════════════════════════════════
         [HttpPut("UpdateProducts")]
-        [Authorize]
+        [RequirePermission("Products", "Update")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -316,7 +318,7 @@ namespace NZWalks.API.Controllers
         // Body: id + reason + user info
         // ══════════════════════════════════════════════════════════════════════
         [HttpDelete("DeleteProductsByID")]
-        [Authorize]
+        [RequirePermission("Products", "Delete")]
         [ProducesResponseType(typeof(DeletedProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -375,6 +377,7 @@ namespace NZWalks.API.Controllers
         // If empty → returns all
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetDeletedProducts")]
+        [RequirePermission("Products", "View")]
         [ProducesResponseType(typeof(List<DeletedProductResponseDto>), 200)]
         public async Task<IActionResult> GetDeletedProducts(
             [FromQuery] Guid? id,
@@ -450,7 +453,7 @@ namespace NZWalks.API.Controllers
         // Query params: productId (optional), page, pageSize
         // ══════════════════════════════════════════════════════════════════════
         [HttpGet("GetProductAuditLogs")]
-        [Authorize]
+        [RequirePermission("Products", "View")]
         [ProducesResponseType(typeof(List<ProductAuditLogDto>), 200)]
         public async Task<IActionResult> GetProductAuditLogs(
             [FromQuery] Guid? productId,
