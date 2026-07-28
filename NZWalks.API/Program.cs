@@ -70,6 +70,9 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 builder.Services.AddDbContext<HrDbContext>(options =>       // ← NEW: HR DbContext
     options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkerConnectionString")));
 
+builder.Services.AddDbContext<RestaurantDbContext>(options =>  // ← NEW: Restaurant Management DbContext
+    options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkerConnectionString")));
+
 // ── JWT Authentication ────────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
@@ -104,6 +107,12 @@ builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("W
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
+
+// Restaurant Management — NEW
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IMenuRepository, NZWalks.API.Repositories.Restaurant.MenuRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.ITableRepository, NZWalks.API.Repositories.Restaurant.TableRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IOrderRepository, NZWalks.API.Repositories.Restaurant.OrderRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IBillingRepository, NZWalks.API.Repositories.Restaurant.BillingRepository>();
 
 // HR — NEW
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
