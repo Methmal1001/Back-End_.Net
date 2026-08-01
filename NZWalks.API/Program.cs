@@ -2,10 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NZWalks.API.Configuration;
 using NZWalks.API.Data;
 using NZWalks.API.Filters;
 using NZWalks.API.Repositories;
 using NZWalks.API.Repositories.HR;
+using NZWalks.API.Repositories.WhatsApp;
 using NZWalks.API.Services;
 using System.Text;
 
@@ -68,6 +70,9 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 builder.Services.AddDbContext<HrDbContext>(options =>       // ← NEW: HR DbContext
     options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkerConnectionString")));
 
+builder.Services.AddDbContext<RestaurantDbContext>(options =>  // ← NEW: Restaurant Management DbContext
+    options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkerConnectionString")));
+
 // ── JWT Authentication ────────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
@@ -94,9 +99,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// ── WhatsApp settings — NEW ─────────────────────────────────────────────────────
+builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("WhatsApp"));
+
 // ── Repositories ──────────────────────────────────────────────────────────────
 // Existing
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+
+// Restaurant Management — NEW
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IMenuRepository, NZWalks.API.Repositories.Restaurant.MenuRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.ITableRepository, NZWalks.API.Repositories.Restaurant.TableRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IOrderRepository, NZWalks.API.Repositories.Restaurant.OrderRepository>();
+builder.Services.AddScoped<NZWalks.API.Repositories.Restaurant.IBillingRepository, NZWalks.API.Repositories.Restaurant.BillingRepository>();
 
 // HR — NEW
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
@@ -111,12 +127,20 @@ builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 // Activity Log — NEW
 builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
 
+// WhatsApp — NEW
+builder.Services.AddScoped<IWhatsAppConversationRepository, WhatsAppConversationRepository>();
+
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Chatbot (Gemini-powered) — NEW
 builder.Services.AddHttpClient<NZWalks.API.Services.ChatbotService>();
 builder.Services.AddScoped<NZWalks.API.Services.IChatbotService, NZWalks.API.Services.ChatbotService>();
+
+// WhatsApp (Cloud API adapter in front of the existing chatbot) — NEW
+builder.Services.AddHttpClient<NZWalks.API.Services.WhatsAppMessagingService>();
+builder.Services.AddScoped<NZWalks.API.Services.IWhatsAppMessagingService, NZWalks.API.Services.WhatsAppMessagingService>();
+builder.Services.AddScoped<NZWalks.API.Services.IWhatsAppConversationService, NZWalks.API.Services.WhatsAppConversationService>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>

@@ -25,6 +25,13 @@ namespace NZWalks.API.Data
             ("Roles", "View"), ("Roles", "Create"), ("Roles", "AssignPermissions"), ("Roles", "Update"), ("Roles", "Delete"),
             ("Permissions", "View"), ("Permissions", "Create"),
             ("System", "ViewActivityLogs"),
+            ("Products", "View"), ("Products", "Create"), ("Products", "Update"), ("Products", "Delete"), ("Products", "ManageCategories"),
+            ("Reports", "View"), ("Reports", "Export"),
+            ("RestaurantMenu", "View"), ("RestaurantMenu", "Create"), ("RestaurantMenu", "Update"), ("RestaurantMenu", "Delete"),
+            ("RestaurantTables", "View"), ("RestaurantTables", "Manage"),
+            ("RestaurantOrders", "View"), ("RestaurantOrders", "Create"), ("RestaurantOrders", "Update"), ("RestaurantOrders", "Cancel"),
+            ("RestaurantKitchen", "View"), ("RestaurantKitchen", "UpdateStatus"),
+            ("RestaurantBilling", "View"), ("RestaurantBilling", "ProcessPayment"),
         };
 
         private static readonly string[] HrManagementModules = { "HR", "Users", "Roles", "Permissions" };
